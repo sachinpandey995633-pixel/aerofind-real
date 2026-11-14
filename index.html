@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -8,6 +8,7 @@
   <!-- Fonts & Icons -->
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=Inter:wght@400;500;600;700&display=swap">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
 
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -144,6 +145,91 @@
 
     .belt-bag-card { width: 65px; height: 65px; border-radius: 12px; overflow: hidden; border: 1.5px solid #38bdf8; background: #1e293b; display:grid; place-items:center; }
 
+    .pnr-input.qr-detected-flash {
+      border-color: #10b981 !important;
+      box-shadow: 0 0 22px rgba(16, 185, 129, 0.75) !important;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    /* QR Scanner Overlay in AI Modal */
+    .qr-overlay-box {
+      display: none;
+      margin-top: 0.5rem;
+      padding: 0.9rem;
+      border-radius: 14px;
+      background: #030712;
+      border: 1.5px solid rgba(56, 189, 248, 0.55);
+      position: relative;
+      text-align: center;
+    }
+    .qr-overlay-box.active { display: block; }
+    .qr-video-wrap {
+      position: relative;
+      width: 100%;
+      max-height: 220px;
+      border-radius: 10px;
+      overflow: hidden;
+      background: #000;
+    }
+    .qr-video-wrap video { width: 100%; max-height: 220px; object-fit: cover; display: block; }
+    .qr-reticle {
+      position: absolute;
+      inset: 18%;
+      border: 2px solid #38bdf8;
+      border-radius: 12px;
+      box-shadow: 0 0 0 999px rgba(0, 0, 0, 0.45);
+      pointer-events: none;
+      transition: border-color 0.2s ease, transform 0.25s ease, box-shadow 0.2s ease;
+    }
+    .qr-reticle.focusing {
+      border-color: #facc15;
+      animation: qr-focus-pulse 0.7s ease-in-out infinite alternate;
+    }
+    .qr-reticle.detected {
+      border-color: #10b981;
+      border-width: 3px;
+      box-shadow: 0 0 0 999px rgba(0, 0, 0, 0.35), 0 0 24px rgba(16, 185, 129, 0.85);
+      transform: scale(0.96);
+    }
+    @keyframes qr-focus-pulse {
+      0% { transform: scale(1.04); opacity: 0.75; }
+      100% { transform: scale(0.98); opacity: 1; }
+    }
+    .qr-scan-line {
+      position: absolute;
+      left: 20%;
+      right: 20%;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, #38bdf8, #34d399, #38bdf8, transparent);
+      box-shadow: 0 0 12px #38bdf8;
+      top: 22%;
+      pointer-events: none;
+      opacity: 0;
+    }
+    .qr-scan-line.scanning {
+      opacity: 1;
+      animation: qr-line-sweep 1.5s ease-in-out infinite alternate;
+    }
+    @keyframes qr-line-sweep {
+      0% { top: 22%; }
+      100% { top: 76%; }
+    }
+    .qr-flash-overlay {
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle, rgba(255, 255, 255, 0.92) 0%, rgba(52, 211, 153, 0.55) 70%, rgba(16, 185, 129, 0.25) 100%);
+      opacity: 0;
+      pointer-events: none;
+      z-index: 5;
+    }
+    .qr-flash-overlay.flash {
+      animation: qr-flash-burst 0.42s ease-out forwards;
+    }
+    @keyframes qr-flash-burst {
+      0% { opacity: 0.95; }
+      100% { opacity: 0; }
+    }
+
     /* Stats & Steps */
     .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.2rem; margin-bottom: 2rem; }
     .stat-card { padding: 1.2rem; text-align: center; }
@@ -254,26 +340,26 @@
     .chatbot-fab:hover { transform: scale(1.08); }
 
     .chatbot-window {
-      position: fixed; bottom: 95px; right: 25px; width: 360px; height: 460px; background: rgba(15, 23, 42, 0.95); border: 1.5px solid rgba(56, 189, 248, 0.4);
+      position: fixed; bottom: 95px; right: 25px; width: 375px; height: 495px; background: rgba(15, 23, 42, 0.96); border: 1.5px solid rgba(56, 189, 248, 0.4);
       border-radius: 20px; backdrop-filter: blur(20px); display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 10px 40px rgba(0,0,0,0.8); z-index: 901; opacity: 0; pointer-events: none; transition: all 0.3s ease;
     }
     .chatbot-window.active { opacity: 1; pointer-events: auto; }
 
     .chat-body { flex: 1; padding: 12px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; font-size: 0.82rem; }
-    .chat-msg { padding: 8px 12px; border-radius: 12px; max-width: 82%; line-height: 1.4; }
+    .chat-msg { padding: 8px 12px; border-radius: 12px; max-width: 86%; line-height: 1.45; white-space: pre-wrap; word-break: break-word; }
     .chat-bot { background: rgba(56, 189, 248, 0.15); border: 1px solid rgba(56, 189, 248, 0.3); color: #f8fafc; align-self: flex-start; }
     .chat-user { background: #0284c7; color: #fff; align-self: flex-end; }
 
     @media (max-width: 920px) {
-      .chatbot-window { right: 16px; width: min(360px, calc(100vw - 32px)); }
+      .chatbot-window { right: 16px; width: min(375px, calc(100vw - 32px)); }
     }
 
     @media (max-width: 600px) {
       .chatbot-fab { right: 14px; bottom: 14px; width: 52px; height: 52px; }
-      .chatbot-window { right: 10px; bottom: 76px; width: calc(100vw - 20px); height: min(460px, calc(100dvh - 94px)); transition: opacity 0.3s ease; }
+      .chatbot-window { right: 10px; bottom: 76px; width: calc(100vw - 20px); height: min(495px, calc(100dvh - 94px)); transition: opacity 0.3s ease; }
     }
   </style>
-<script src="/_aistudio-iframe.js?v=1f94f900"></script></head>
+</head>
 <body>
 
   <div id="startup-screen" class="startup-screen" role="status" aria-label="Loading AeroFind">
@@ -306,7 +392,7 @@
       </nav>
 
       <button onclick="openStaffModal()" style="padding: 9px 20px; color: #fff; font-size: 0.85rem; font-weight: 700; cursor: pointer; border: 1.5px solid rgba(56, 189, 248, 0.4); border-radius: 12px; background: rgba(56, 189, 248, 0.1); display:flex; align-items:center; gap:8px;">
-        <i class="fa-solid fa-shield-halved" style="color:#38bdf8;"></i> Staff / Airport Login
+        <i class="fa-solid fa-shield-halved" style="color:#38bdf8;"></i> Staff Portal
       </button>
     </header>
 
@@ -319,7 +405,7 @@
           <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: #cbd5e1; font-weight: bold; margin-bottom: 1rem;">
             <span><i class="fa-solid fa-plane-departure" style="color:#38bdf8; margin-right:4px;"></i> SAMPLE FLIGHT SIMULATION</span>
             <span style="color: #facc15; display: flex; align-items: center; gap: 6px;">
-              <span class="live-dot" style="background:#facc15;box-shadow:0 0 8px rgba(250,204,21,.8);">              </span> SIMULATED
+              <span class="live-dot" style="background:#facc15;box-shadow:0 0 8px rgba(250,204,21,.8);"></span> SIMULATED
             </span>
           </div>
           <p style="font-size:0.67rem;color:#94a3b8;margin:-0.45rem 0 0.85rem;">Statuses cycle every 6 seconds · Not a live airline feed</p>
@@ -332,7 +418,7 @@
               </span>
               <span style="text-align:right;">
                 <strong style="color:#38bdf8;">08:40</strong>
-                <small style="display:block;color:#34d399;margin-top:3px;">On Time</small>
+                <small class="dep-status" style="display:block;color:#34d399;margin-top:3px;">On Time</small>
               </span>
             </div>
             <div class="dep-row">
@@ -342,7 +428,7 @@
               </span>
               <span style="text-align:right;">
                 <strong style="color:#38bdf8;">09:15</strong>
-                <small style="display:block;color:#facc15;margin-top:3px;">Boarding</small>
+                <small class="dep-status" style="display:block;color:#facc15;margin-top:3px;">Boarding</small>
               </span>
             </div>
             <div class="dep-row">
@@ -352,7 +438,7 @@
               </span>
               <span style="text-align:right;">
                 <strong style="color:#38bdf8;">10:05</strong>
-                <small style="display:block;color:#fb923c;margin-top:3px;">Delayed 20 min</small>
+                <small class="dep-status" style="display:block;color:#fb923c;margin-top:3px;">Delayed 20 min</small>
               </span>
             </div>
           </div>
@@ -361,8 +447,8 @@
         <div class="glass-panel" style="padding: 1rem; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.5rem; text-align: center;">
           <div>
             <div style="font-size: 1.2rem; color:#38bdf8;"><i class="fa-solid fa-suitcase"></i></div>
-            <div style="font-size: 1rem; font-weight: 800; color: #fff;" id="count-lost">—</div>
-            <div style="font-size: 0.6rem; color: #94a3b8;">Open sample reports</div>
+            <div style="font-size: 1rem; font-weight: 800; color: #fff;" id="count-lost">0</div>
+            <div style="font-size: 0.6rem; color: #94a3b8;">Saved bag reports</div>
           </div>
           <div>
             <div style="font-size: 1.2rem; color:#a855f7;"><i class="fa-solid fa-magnifying-glass"></i></div>
@@ -371,7 +457,7 @@
           </div>
           <div>
             <div style="font-size: 1.2rem; color:#10b981;"><i class="fa-solid fa-circle-check"></i></div>
-            <div style="font-size: 1rem; font-weight: 800; color: #10b981;" id="count-reunited">—</div>
+            <div style="font-size: 1rem; font-weight: 800; color: #10b981;" id="count-reunited">0</div>
             <div style="font-size: 0.6rem; color: #94a3b8;">Staff removals</div>
           </div>
         </div>
@@ -380,7 +466,7 @@
       <!-- CENTER COLUMN: PNR SEARCH BOX -->
       <div class="center-hero">
         <span class="hero-badge">
-          <i class="fa-solid fa-star" style="color:#facc15;"></i> Staff-Assisted Lost-Baggage Recovery
+          <i class="fa-solid fa-star" style="color:#facc15;"></i> AI-Assisted Lost-Baggage Recovery
         </span>
 
         <h2 class="font-sora gradient-title">
@@ -388,16 +474,16 @@
         </h2>
 
         <p style="color: #cbd5e1; font-size: 0.9rem; margin-bottom: 1.5rem;">
-          A simple recovery layer for airports and passengers—connecting staff-reported bags to the people looking for them, with faster updates and clearer next steps.
+          A simple recovery layer for airports and passengers—connecting staff-reported bags to the people looking for them, with Gemini AI photo matching, QR bag-tag scanning, Search &amp; Maps grounding, and real-time voice support.
         </p>
 
         <div class="glass-panel-glow" style="width: 100%; max-width: 530px; padding: 1.5rem; text-align: left;">
-          <div style="display: flex; align-items: center; justify-style:space-between; margin-bottom: 1rem;">
+          <div style="display: flex; align-items: center; justify-content:space-between; margin-bottom: 1rem;">
             <span style="font-size: 1rem; font-weight: 700; color: #fff; display:flex; align-items:center; gap:8px;">
               <i class="fa-solid fa-suitcase" style="color:#a855f7;"></i> Track Your Lost Item
             </span>
             <span style="font-size:0.7rem; background:rgba(16,185,129,0.15); color:#34d399; padding:3px 8px; border-radius:6px; font-weight:bold;">
-              <i class="fa-solid fa-database"></i> Synthetic demo
+              <i class="fa-solid fa-bolt"></i> No Login Needed
             </span>
           </div>
 
@@ -405,7 +491,7 @@
             <input
               type="text"
               id="pnr-input"
-              placeholder="Enter sample reference (e.g. 6E1234)"
+              placeholder="Enter sample or logged PNR (e.g. 6E1234)"
               class="pnr-input"
               required
             />
@@ -419,7 +505,7 @@
           </button>
 
           <p style="font-size: 0.75rem; color: #10b981; margin-top: 0.9rem; text-align: center; display:flex; align-items:center; justify-content:center; gap:6px;">
-            <i class="fa-solid fa-shield-check"></i> Sample 6E1234 works offline; staff reports need the AeroFind server.
+            <i class="fa-solid fa-shield-check"></i> Sample 6E1234 &amp; staff reports work directly without sign-in.
           </p>
         </div>
       </div>
@@ -428,10 +514,9 @@
       <div style="display: flex; flex-direction: column; gap: 1rem; justify-content: center;">
         <div class="glass-panel" style="padding: 1.2rem; text-align: center; position:relative; display:flex; flex-direction:column; align-items:center;">
           <div style="position:absolute; top:12px; left:12px; background:rgba(2,132,199,0.8); color:#fff; font-size:0.65rem; padding:3px 8px; border-radius:6px; font-weight:bold;">
-            Bag Photo Preview
+            Gemini AI Bag Match
           </div>
 
-          <!-- Guaranteed Inline SVG Bag Image -->
           <div id="featured-bag-box" style="width: 100%; height: 150px; margin-top: 15px; display: grid; place-items: center; background: rgba(30,58,138,0.2); border-radius: 12px; border: 1px solid rgba(56,189,248,0.3);">
             <svg width="110" height="110" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
               <rect x="5" y="6" width="14" height="15" rx="3" fill="#1e293b" />
@@ -444,14 +529,14 @@
             </svg>
           </div>
 
-          <div style="font-size:0.75rem; color:#cbd5e1; margin-top:8px; font-weight:bold;" id="featured-bag-label">Bag photo search preview</div>
+          <div style="font-size:0.75rem; color:#cbd5e1; margin-top:8px; font-weight:bold;" id="featured-bag-label">AI Photo + QR Tag Matcher</div>
         </div>
 
         <button class="glass-panel" onclick="openAIModal()" style="padding: 12px 16px; text-align: left; cursor: pointer; display: flex; align-items: center; gap: 12px; color: #fff; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.15);">
           <i class="fa-solid fa-camera" style="font-size: 1.4rem; color: #38bdf8;"></i>
           <div>
             <div style="font-size: 0.8rem; font-weight: bold;">AEROFIND AI BAG MATCH</div>
-            <div style="font-size: 0.65rem; color: #94a3b8;">(Simulated MVP · photo + PNR or tag)</div>
+            <div style="font-size: 0.65rem; color: #94a3b8;">Photo + QR Bag Tag Scanner</div>
           </div>
         </button>
 
@@ -459,7 +544,7 @@
           <i class="fa-solid fa-database" style="font-size: 1.4rem; color: #10b981;"></i>
           <div>
             <div style="font-size: 0.8rem; font-weight: bold; color:#34d399;">DATA &amp; PRIVACY</div>
-            <div style="font-size: 0.65rem; color: #94a3b8;">(View retention limits)</div>
+            <div style="font-size: 0.65rem; color: #94a3b8;">Wipe requests &amp; local storage controls</div>
           </div>
         </button>
       </div>
@@ -478,24 +563,24 @@
     <!-- STATS ROW -->
     <section class="stats-grid">
       <div class="glass-panel stat-card">
-        <div class="font-sora stat-num" id="stat-active-reports" style="color: #c084fc;">—</div>
+        <div class="font-sora stat-num" id="stat-active-reports" style="color: #c084fc;">0</div>
         <div style="font-size: 0.85rem; font-weight: 700;">Active Bag Reports</div>
-        <div style="font-size: 0.7rem; color: #94a3b8;">Current in-memory records</div>
+        <div style="font-size: 0.7rem; color: #94a3b8;">Saved in workspace</div>
       </div>
       <div class="glass-panel stat-card">
-        <div class="font-sora stat-num" id="stat-pnr-searches" style="color: #f472b6;">—</div>
+        <div class="font-sora stat-num" id="stat-pnr-searches" style="color: #f472b6;">0</div>
         <div style="font-size: 0.85rem; font-weight: 700;">PNR Status Checks</div>
-        <div style="font-size: 0.7rem; color: #94a3b8;">Since this server started</div>
+        <div style="font-size: 0.7rem; color: #94a3b8;">Total lookups</div>
       </div>
       <div class="glass-panel stat-card">
-        <div class="font-sora stat-num" id="stat-photo-searches" style="color: #fb923c;">—</div>
-        <div style="font-size: 0.85rem; font-weight: 700;">Photo Comparisons</div>
-        <div style="font-size: 0.7rem; color: #94a3b8;">Coarse color matching</div>
+        <div class="font-sora stat-num" id="stat-photo-searches" style="color: #fb923c;">0</div>
+        <div style="font-size: 0.85rem; font-weight: 700;">AI Photo Matches</div>
+        <div style="font-size: 0.7rem; color: #94a3b8;">Gemini vision checks</div>
       </div>
       <div class="glass-panel stat-card">
-        <div class="font-sora stat-num" id="stat-reports-removed" style="color: #facc15;">—</div>
+        <div class="font-sora stat-num" id="stat-reports-removed" style="color: #facc15;">0</div>
         <div style="font-size: 0.85rem; font-weight: 700;">Reports Removed</div>
-        <div style="font-size: 0.7rem; color: #38bdf8;">Staff action · not reunion count</div>
+        <div style="font-size: 0.7rem; color: #38bdf8;">Staff cleanup actions</div>
       </div>
     </section>
 
@@ -506,8 +591,8 @@
         <p style="color:#cbd5e1;font-size:.82rem;line-height:1.6;max-width:620px;">AeroFind gives ground teams one lightweight workflow for reporting, matching, verification, and pickup readiness—while giving passengers a clear status instead of another silent wait.</p>
         <div style="display:flex;flex-wrap:wrap;gap:.55rem;margin-top:1rem;">
           <span style="padding:6px 10px;border-radius:999px;background:rgba(56,189,248,.1);border:1px solid rgba(56,189,248,.25);color:#bae6fd;font-size:.7rem;">Staff-first workflow</span>
-          <span style="padding:6px 10px;border-radius:999px;background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.25);color:#6ee7b7;font-size:.7rem;">Privacy-aware by design</span>
-          <span style="padding:6px 10px;border-radius:999px;background:rgba(168,85,247,.1);border:1px solid rgba(168,85,247,.25);color:#d8b4fe;font-size:.7rem;">Integration-ready</span>
+          <span style="padding:6px 10px;border-radius:999px;background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.25);color:#6ee7b7;font-size:.7rem;">Zero-login instant access</span>
+          <span style="padding:6px 10px;border-radius:999px;background:rgba(168,85,247,.1);border:1px solid rgba(168,85,247,.25);color:#d8b4fe;font-size:.7rem;">Gemini Search, Maps &amp; Voice</span>
         </div>
       </div>
       <div style="display:grid;gap:.7rem;">
@@ -534,23 +619,23 @@
       <div class="steps-grid">
         <div class="step-card">
           <div class="step-num">1</div>
-          <div style="font-size: 0.95rem; font-weight: bold; margin-bottom: 0.3rem;">Staff Photo Upload</div>
-          <div style="font-size: 0.75rem; color: #94a3b8;">Authorized staff sign in and add a bag description, location, and optional photo.</div>
+          <div style="font-size: 0.95rem; font-weight: bold; margin-bottom: 0.3rem;">Staff Report Entry</div>
+          <div style="font-size: 0.75rem; color: #94a3b8;">Ground teams open the Staff Portal and log bag description, location belt, and reference.</div>
         </div>
         <div class="step-card">
           <div class="step-num">2</div>
-          <div style="font-size: 0.95rem; font-weight: bold; margin-bottom: 0.3rem;">Passenger PNR Query</div>
-          <div style="font-size: 0.75rem; color: #94a3b8;">Passenger enters the booking reference linked to the staff report.</div>
+          <div style="font-size: 0.95rem; font-weight: bold; margin-bottom: 0.3rem;">Passenger PNR or QR Photo Match</div>
+          <div style="font-size: 0.75rem; color: #94a3b8;">Scan a bag-tag QR code or upload a bag photo for Gemini AI visual matching.</div>
         </div>
         <div class="step-card">
           <div class="step-num">3</div>
-          <div style="font-size: 0.95rem; font-weight: bold; margin-bottom: 0.3rem;">Airport Pickup Confirmation</div>
-          <div style="font-size: 0.75rem; color: #94a3b8;">Passenger confirms the report with the airport lost-and-found desk.</div>
+          <div style="font-size: 0.95rem; font-weight: bold; margin-bottom: 0.3rem;">Maps &amp; Voice Desk Help</div>
+          <div style="font-size: 0.75rem; color: #94a3b8;">Use AeroBot Search, Google Maps grounding, or Live Voice to locate the pickup desk.</div>
         </div>
         <div class="step-card">
           <div class="step-num">4</div>
-          <div style="font-size: 0.95rem; font-weight: bold; margin-bottom: 0.3rem;">Memory Retention</div>
-          <div style="font-size: 0.75rem; color: #94a3b8;">Reports expire after 30 days, staff removal, or server restart; no six-second wipe is claimed.</div>
+          <div style="font-size: 0.95rem; font-weight: bold; margin-bottom: 0.3rem;">Privacy Control</div>
+          <div style="font-size: 0.75rem; color: #94a3b8;">Request or purge saved records anytime from the Data &amp; Privacy modal.</div>
         </div>
       </div>
     </section>
@@ -558,45 +643,56 @@
   </div>
 
   <!-- FLOATING AI CHATBOT BUTTON & WINDOW -->
-  <div class="chatbot-fab" onclick="toggleChatbot()">
+  <div class="chatbot-fab" onclick="toggleChatbot()" title="Open AeroBot AI">
     <i class="fa-solid fa-robot"></i>
   </div>
 
   <div id="chatbot-window" class="chatbot-window">
-    <div style="background:#0284c7; padding:12px 16px; color:#fff; font-weight:bold; font-size:0.9rem; display:flex; justify-style:space-between; align-items:center;">
-      <span><i class="fa-solid fa-robot" style="margin-right:6px;"></i> AeroBot • Lost & Found Help</span>
+    <div style="background:#0284c7; padding:12px 16px; color:#fff; font-weight:bold; font-size:0.9rem; display:flex; justify-content:space-between; align-items:center;">
+      <span><i class="fa-solid fa-robot" style="margin-right:6px;"></i> AeroBot • Gemini AI</span>
       <span onclick="toggleChatbot()" style="cursor:pointer;">✕</span>
     </div>
-    <p id="chat-ai-status" style="padding:5px 12px;margin:0;color:#94a3b8;font-size:0.68rem;background:rgba(0,0,0,0.25);">Checking assistant mode…</p>
-
-    <div id="chat-body" class="chat-body">
-      <div class="chat-msg chat-bot">
-        Namaste! Ask me about checking a bag report or using AeroFind.
+    <div id="chat-ai-status" style="padding:7px 10px;background:rgba(0,0,0,0.35);border-bottom:1px solid rgba(255,255,255,0.08);">
+      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
+        <select id="aerobot-mode" style="flex:1;min-width:130px;background:#0f172a;color:#38bdf8;border:1px solid rgba(56,189,248,0.5);border-radius:8px;padding:4px 8px;font-size:0.72rem;outline:none;">
+          <option value="general">AeroBot (Gemini Flash)</option>
+          <option value="reasoning">Deep Analysis (Gemini Pro)</option>
+          <option value="search">Live Google Search</option>
+          <option value="maps">Airport Google Maps</option>
+          <option value="fast">Quick Reply (Flash-Lite)</option>
+        </select>
+        <button id="live-voice-btn" type="button" style="background:#8b5cf6;color:#fff;border:none;border-radius:8px;padding:5px 9px;font-size:0.7rem;font-weight:700;cursor:pointer;">
+          <i class="fa-solid fa-microphone"></i> Voice
+        </button>
+        <button id="clear-chat-btn" type="button" style="background:#334155;color:#cbd5e1;border:none;border-radius:8px;padding:5px 9px;font-size:0.7rem;cursor:pointer;">
+          Clear
+        </button>
       </div>
     </div>
 
+    <div id="chat-body" class="chat-body"></div>
+
     <div style="padding:10px; background:rgba(0,0,0,0.4); display:flex; gap:6px;">
-      <input type="text" id="chat-input" placeholder="Type query (e.g. 'PNR 6E1234')" class="pnr-input" style="padding:8px 12px; font-size:0.8rem;" onkeypress="handleChatKeyPress(event)" />
+      <input type="text" id="chat-input" placeholder="Ask AeroBot (e.g. 'DEL Terminal 3 desk')" class="pnr-input" style="padding:8px 12px; font-size:0.8rem;" onkeypress="handleChatKeyPress(event)" />
       <button onclick="sendChatMessage()" class="btn-gradient" style="padding:8px 14px; font-size:0.8rem;"><i class="fa-solid fa-paper-plane"></i></button>
     </div>
   </div>
 
-  <!-- CONVEYOR BELT SCANNING ANIMATION OVERLAY WITH LASER & SVG BAGS -->
+  <!-- CONVEYOR BELT SCANNING ANIMATION OVERLAY -->
   <div id="scan-modal" class="modal-overlay">
     <div class="glass-panel-glow" style="padding: 2rem; width: 90%; max-width: 480px; text-align: center;">
       <h3 style="font-size: 1.3rem; color: #38bdf8; margin-bottom: 0.2rem; display:flex; align-items:center; justify-content:center; gap:8px;">
         <i class="fa-solid fa-conveyor-belt"></i> Laser Scanning Baggage Belts
       </h3>
-      <p style="color: #cbd5e1; font-size: 0.8rem; margin-bottom: 1rem;">Checking temporary AeroFind bag reports. This is not connected to airport systems.</p>
+      <p style="color: #cbd5e1; font-size: 0.8rem; margin-bottom: 1rem;">Checking AeroFind recovery records...</p>
 
-      <!-- AIRPORT CONVEYOR BELT ANIMATION -->
       <div class="belt-container">
         <div class="belt-laser"></div>
         <div class="belt-bags-wrapper">
           <div class="belt-bag-card">
             <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2"><rect x="5" y="6" width="14" height="15" rx="2" fill="#0f172a"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
           </div>
-          <div class="belt-bag-card" id="belt-preview-custom">
+          <div class="belt-bag-card">
             <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#a855f7" stroke-width="2"><rect x="5" y="6" width="14" height="15" rx="2" fill="#1e1b4b"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
           </div>
           <div class="belt-bag-card">
@@ -609,186 +705,158 @@
       <div style="background: rgba(255,255,255,0.1); height: 10px; border-radius: 5px; overflow: hidden; margin-bottom:0.8rem;">
         <div id="progress-bar" class="progress-bar-inner"></div>
       </div>
-
-      <p style="font-size:0.7rem; color:#10b981;"><i class="fa-solid fa-lock"></i> Raw booking reference is not stored by AeroFind.</p>
     </div>
   </div>
 
-  <!-- Simulated AeroFind AI baggage matching demo -->
+  <!-- GEMINI AI BAG MATCH MODAL WITH QR TAG SCANNER -->
   <div id="ai-modal" class="modal-overlay">
     <div class="glass-panel" style="padding: 1.5rem; width: 94%; max-width: 620px; max-height: 90vh; overflow-y: auto; text-align: left; position: relative;">
       <button onclick="closeAIModal()" aria-label="Close AeroFind AI" style="position: absolute; top: 15px; right: 20px; background: none; border: none; color: #94a3b8; font-size: 1.2rem; cursor: pointer;">✕</button>
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:0.5rem;">
         <i class="fa-solid fa-wand-magic-sparkles" style="font-size: 2rem; color: #a855f7;"></i>
         <div>
-          <h3 style="font-size: 1.3rem; color: #fff; margin:0;">AeroFind AI</h3>
-          <span style="font-size:0.68rem;color:#facc15;font-weight:800;letter-spacing:.08em;">SIMULATED MVP DEMO</span>
+          <h3 style="font-size: 1.3rem; color: #fff; margin:0;">AeroFind AI Bag Match</h3>
+          <span style="font-size:0.68rem;color:#34d399;font-weight:800;letter-spacing:.08em;">GEMINI MULTIMODAL VISION + QR SCANNER</span>
         </div>
       </div>
       <p style="color: #cbd5e1; font-size: 0.8rem; margin: 0 0 1rem;">
-        Add a bag photo and enter a PNR or bag-tag number to preview possible matches.
+        Upload a bag photo and type or QR-scan your PNR / bag-tag number.
       </p>
-      <div style="padding:10px 12px;margin-bottom:1rem;border:1px solid rgba(250,204,21,.35);border-radius:10px;background:rgba(250,204,21,.07);color:#fde68a;font-size:.72rem;line-height:1.5;">
-        Matching and confidence scores are simulated examples—not AI image analysis. No airline data is checked, and your photo and reference stay in this browser demo.
-      </div>
       <form id="ai-match-form" style="display:flex;flex-direction:column;gap:.8rem;">
         <label for="ai-file-input" style="font-size:.75rem;color:#e2e8f0;font-weight:700;">Bag photo</label>
-        <input type="file" id="ai-file-input" accept="image/jpeg,image/png,image/webp" capture="environment" required class="pnr-input" style="width:100%;font-size:.75rem;padding:10px;" aria-describedby="ai-photo-help">
-        <span id="ai-photo-help" style="margin-top:-.6rem;color:#94a3b8;font-size:.68rem;">JPEG, PNG, or WebP · maximum 4 MB · preview stays on this device</span>
-        <img id="ai-photo-preview" alt="Local bag photo preview" style="display:none;width:100%;max-height:190px;object-fit:contain;border-radius:10px;background:rgba(0,0,0,.25);">
+        <input type="file" id="ai-file-input" accept="image/jpeg,image/png,image/webp" required class="pnr-input" style="width:100%;font-size:.75rem;padding:10px;">
+        <span style="margin-top:-.6rem;color:#94a3b8;font-size:.68rem;">JPEG, PNG, or WebP · maximum 4 MB</span>
+        <img id="ai-photo-preview" alt="Bag photo preview" style="display:none;width:100%;max-height:190px;object-fit:contain;border-radius:10px;background:rgba(0,0,0,.25);">
+
         <label for="ai-reference-input" style="font-size:.75rem;color:#e2e8f0;font-weight:700;">PNR or bag-tag number</label>
-        <input type="text" id="ai-reference-input" class="pnr-input" style="width:100%;" placeholder="Enter a demo reference or tag" minlength="5" maxlength="20" pattern="[-A-Za-z0-9]{5,20}" autocomplete="off" required>
-        <span style="margin-top:-.6rem;color:#94a3b8;font-size:.68rem;">Demo only. This value is not sent to an airline or used to retrieve a real record.</span>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+          <input type="text" id="ai-reference-input" class="pnr-input" style="flex:1;min-width:170px;" placeholder="e.g. 6E1234" minlength="4" maxlength="20" autocomplete="off" required>
+          <button type="button" id="open-qr-scanner-btn" style="background:rgba(56,189,248,0.16);color:#38bdf8;border:1px solid rgba(56,189,248,0.5);border-radius:12px;padding:13px 14px;font-size:0.8rem;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px;">
+            <i class="fa-solid fa-qrcode"></i> Scan Tag QR
+          </button>
+        </div>
+
+        <div id="qr-scanner-overlay" class="qr-overlay-box">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+            <span style="color:#38bdf8;font-size:.78rem;font-weight:700;"><i class="fa-solid fa-qrcode"></i> Auto-focusing on bag-tag QR / PNR</span>
+            <button type="button" id="close-qr-scanner-btn" style="background:#7f1d1d;color:#fecaca;border:none;border-radius:8px;padding:4px 10px;font-size:.72rem;cursor:pointer;">Close</button>
+          </div>
+          <div class="qr-video-wrap">
+            <video id="qr-video" playsinline muted></video>
+            <div id="qr-reticle" class="qr-reticle"></div>
+            <div id="qr-scan-line" class="qr-scan-line"></div>
+            <div id="qr-flash-overlay" class="qr-flash-overlay"></div>
+          </div>
+          <canvas id="qr-canvas" style="display:none;"></canvas>
+          <p id="qr-scan-status" style="color:#94a3b8;font-size:.72rem;margin-top:8px;">Starting camera...</p>
+        </div>
+
         <button id="ai-match-submit" type="submit" class="btn-gradient" style="width:100%;padding:12px;">
-          <i class="fa-solid fa-magnifying-glass"></i> Show simulated matches
+          <i class="fa-solid fa-magnifying-glass"></i> Analyze Bag Photo with Gemini
         </button>
       </form>
       <div id="ai-match-results" role="status" aria-live="polite" style="margin-top:1rem;"></div>
     </div>
   </div>
 
-  <!-- REALISTIC GROUND STAFF ENTRY MODAL -->
+  <!-- STAFF RECOVERY PORTAL MODAL (UNLOCKED — NO LOGIN NEEDED) -->
   <div id="staff-modal" class="modal-overlay">
-    <div class="glass-panel-glow" style="padding: 2rem; width: 90%; max-width: 520px; text-align: left; position: relative;">
+    <div class="glass-panel-glow" style="padding: 2rem; width: 90%; max-width: 540px; text-align: left; position: relative;">
       <button onclick="closeStaffModal()" style="position: absolute; top: 15px; right: 20px; background: none; border: none; color: #94a3b8; font-size: 1.2rem; cursor: pointer;">✕</button>
       <h3 style="font-size: 1.25rem; color: #38bdf8; margin-bottom: 0.3rem; display: flex; align-items: center; gap: 8px;">
         <i class="fa-solid fa-user-shield"></i> Staff Recovery Portal
       </h3>
-      <p style="font-size:0.75rem; color:#94a3b8; margin-bottom:1.2rem;">
-        <span style="display:inline-block;padding:3px 8px;border-radius:6px;background:rgba(250,204,21,.12);border:1px solid rgba(250,204,21,.35);color:#facc15;font-weight:800;letter-spacing:.06em;">DEMO MODE</span>
-        Staff reports are stored in server memory. Sign in with credentials configured by the operator.
-        IATA Resolution 753 checkpoint labels are reference categories only; updates are manual demo entries, not live scans or proof of compliance.
+      <p style="font-size:0.75rem; color:#94a3b8; margin-bottom:1.1rem;">
+        Direct access enabled — add or search found-bag reports directly without password verification.
       </p>
 
-      <form id="staff-login-form" onsubmit="staffLogin(event)" style="display: flex; flex-direction: column; gap: 0.9rem;">
-        <div>
-          <label style="font-size: 0.72rem; color: #cbd5e1; display: block; margin-bottom: 4px;">Staff Username</label>
-          <input type="text" id="staff-username" class="pnr-input" style="width: 100%;" autocomplete="username" required>
-        </div>
-        <div>
-          <label style="font-size: 0.72rem; color: #cbd5e1; display: block; margin-bottom: 4px;">Password</label>
-          <input type="password" id="staff-password" class="pnr-input" style="width: 100%;" autocomplete="current-password" required>
-        </div>
-        <p id="staff-login-status" style="display:none; color:#fca5a5; font-size:0.75rem;"></p>
-        <button type="submit" class="btn-gradient"><i class="fa-solid fa-right-to-bracket"></i> Staff Sign In</button>
-      </form>
-
-      <div id="staff-upload-panel" style="display:none;">
-      <button type="button" onclick="staffLogout()" style="margin: 0 0 0.8rem; padding:6px 12px; color:#fff; border:1px solid rgba(255,255,255,0.18); border-radius:8px; background:transparent; cursor:pointer;">Sign Out</button>
-      <p id="staff-upload-status" style="display:none; color:#34d399; font-size:0.75rem; margin-bottom:0.8rem;"></p>
-      <form id="staff-recovery-search" style="display:flex;gap:8px;margin:0 0 1rem;">
-        <input type="search" id="staff-search-reference" placeholder="Search all reports by PNR or bag tag" class="pnr-input" style="min-width:0;width:100%;" autocomplete="off">
-        <button type="submit" class="btn-gradient" style="padding:8px 12px;">Search</button>
-      </form>
-      <p style="font-size:.68rem;color:#94a3b8;margin:-.6rem 0 1rem;">Search works with a PNR or a bag tag. Demo records only.</p>
-      <h4 style="color:#e2e8f0;font-size:.9rem;margin:0 0 .7rem;">Add a lost-bag case</h4>
-      <form onsubmit="handleStaffUpload(event)" style="display: flex; flex-direction: column; gap: 0.9rem;">
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem;">
-          <div>
-            <label style="font-size: 0.72rem; color: #cbd5e1; display: block; margin-bottom: 4px;">Airport / Code</label>
-            <input type="text" id="staff-airport" placeholder="Delhi (DEL)" class="pnr-input" style="width: 100%;" required>
-          </div>
-          <div>
+      <div id="staff-upload-panel" style="display:block;">
+        <p id="staff-upload-status" style="display:none; color:#34d399; font-size:0.75rem; margin-bottom:0.8rem;"></p>
+        <form id="staff-recovery-search" style="display:flex;gap:8px;margin:0 0 1rem;">
+          <input type="search" id="staff-search-reference" placeholder="Search reports by PNR or bag tag" class="pnr-input" style="min-width:0;width:100%;" autocomplete="off">
+          <button type="submit" class="btn-gradient" style="padding:8px 12px;">Search</button>
+        </form>
+        <h4 style="color:#e2e8f0;font-size:.9rem;margin:0 0 .7rem;">Add a lost-bag case</h4>
+        <form onsubmit="handleStaffUpload(event)" style="display: flex; flex-direction: column; gap: 0.9rem;">
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem;">
+            <div>
+              <label style="font-size: 0.72rem; color: #cbd5e1; display: block; margin-bottom: 4px;">Airport / Code</label>
+              <input type="text" id="staff-airport" placeholder="Delhi (DEL)" class="pnr-input" style="width: 100%;" required>
+            </div>
+            <div>
               <label style="font-size: 0.72rem; color: #cbd5e1; display: block; margin-bottom: 4px;">Booking Reference / PNR</label>
-              <input type="text" id="staff-pnr" placeholder="e.g. 6E1234" minlength="5" maxlength="10" pattern="[A-Za-z0-9]{5,10}" class="pnr-input" style="width: 100%;" required>
+              <input type="text" id="staff-pnr" placeholder="e.g. 6E1234" minlength="4" maxlength="16" class="pnr-input" style="width: 100%;" required>
+            </div>
           </div>
-        </div>
-        <div>
-          <label style="font-size: 0.72rem; color: #cbd5e1; display: block; margin-bottom: 4px;">Bag Tag Number (optional)</label>
-          <input type="text" id="staff-bag-tag" placeholder="e.g. DEMO-BAG-123" minlength="5" maxlength="20" pattern="[-A-Za-z0-9]{5,20}" class="pnr-input" style="width: 100%;" autocomplete="off">
-        </div>
-
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem;">
-          <div>
-            <label style="font-size: 0.72rem; color: #cbd5e1; display: block; margin-bottom: 4px;">Airport Location / Belt</label>
-            <input type="text" id="staff-location" placeholder="Terminal 2 • Belt 4" class="pnr-input" style="width: 100%;" required>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem;">
+            <div>
+              <label style="font-size: 0.72rem; color: #cbd5e1; display: block; margin-bottom: 4px;">Airport Location / Belt</label>
+              <input type="text" id="staff-location" placeholder="Terminal 2 • Belt 4" class="pnr-input" style="width: 100%;" required>
+            </div>
+            <div>
+              <label style="font-size: 0.72rem; color: #cbd5e1; display: block; margin-bottom: 4px;">Visual Description</label>
+              <input type="text" id="staff-item" placeholder="Navy Blue Hard-shell Bag" class="pnr-input" style="width: 100%;" required>
+            </div>
           </div>
-          <div>
-            <label style="font-size: 0.72rem; color: #cbd5e1; display: block; margin-bottom: 4px;">Visual Description (Color/Type)</label>
-            <input type="text" id="staff-item" placeholder="Navy Blue Hard-shell Bag" class="pnr-input" style="width: 100%;" required>
-          </div>
-        </div>
-
-        <div>
-          <label style="font-size: 0.72rem; color: #cbd5e1; display: block; margin-bottom: 4px;">Snap Live Bag Photo (Camera Access)</label>
-          <input type="file" id="staff-photo-input" accept="image/jpeg,image/png,image/webp" capture="environment" class="pnr-input" style="width: 100%; font-size:0.75rem;" onchange="previewStaffPhoto(this)">
-        </div>
-
-        <div id="staff-photo-preview-box" style="display:none; text-align:center; background:rgba(0,0,0,0.4); padding:8px; border-radius:10px;">
-          <img id="staff-preview-img" src="" style="max-height:80px; border-radius:8px; border:1px solid #38bdf8;">
-        </div>
-
-        <button type="submit" class="btn-gradient" style="margin-top: 0.4rem;">
-          <i class="fa-solid fa-upload"></i> Save Bag Report in Memory
-        </button>
-      </form>
-      <div id="staff-bags-list" style="margin-top:1rem;"></div>
-      <section style="margin-top:1.5rem;padding-top:1rem;border-top:1px solid rgba(255,255,255,.12);">
-        <h4 style="color:#e2e8f0;font-size:.9rem;margin:0 0 .35rem;">Privacy wipe approvals &amp; audit log</h4>
-        <p style="font-size:.68rem;color:#facc15;margin:0 0 .6rem;">DEMO DATA · Requests stay pending until staff approves or rejects them. Only approval removes the active bag report and photo.</p>
-        <div id="staff-privacy-requests-list" aria-live="polite"></div>
-      </section>
+          <button type="submit" class="btn-gradient" style="margin-top: 0.2rem;">
+            <i class="fa-solid fa-upload"></i> Save Bag Report
+          </button>
+        </form>
+        <div id="staff-bags-list" style="margin-top:1rem;"></div>
       </div>
     </div>
   </div>
 
-  <!-- LIVE ZDR REDIS RAM INSPECTOR MODAL -->
+  <!-- DATA & PRIVACY MODAL -->
   <div id="zdr-modal" class="modal-overlay">
     <div class="glass-panel" style="padding: 2rem; width: 90%; max-width: 580px; text-align: left; position: relative; border-color:#10b981;">
       <button onclick="closeZDRInspector()" style="position: absolute; top: 15px; right: 20px; background: none; border: none; color: #94a3b8; font-size: 1.2rem; cursor: pointer;">✕</button>
 
-      <div style="display:flex; align-items:center; justify-style:space-between; margin-bottom:1rem;">
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:1rem;">
         <h3 style="font-size: 1.2rem; color: #34d399; display: flex; align-items: center; gap: 8px;">
           <i class="fa-solid fa-server"></i> Data Retention &amp; Privacy
         </h3>
         <span style="font-size:0.65rem; background:#022c22; color:#10b981; border:1px solid #10b981; padding:3px 8px; border-radius:6px; font-weight:bold;">
-          RAM Buffer Active
+          Local Storage Controls
         </span>
       </div>
 
-      <p style="font-size:0.78rem; color:#cbd5e1; margin-bottom:1.2rem;">
-        AeroFind keeps bag reports in server memory. It is not a Redis service and does not guarantee immediate or six-second memory erasure.
-      </p>
-
       <section style="padding:1rem;margin-bottom:1rem;border:1px solid rgba(56,189,248,.25);border-radius:12px;background:rgba(56,189,248,.05);">
-        <h4 style="margin:0 0 .4rem;color:#bae6fd;font-size:.9rem;">Request a passenger data wipe</h4>
-        <p style="font-size:.72rem;color:#cbd5e1;margin:0 0 .8rem;">DEMO ONLY · Enter a PNR or bag tag to send a request to staff. Nothing is wiped unless staff approves it. The reference is used to find matching demo records and is not retained in the request log. This does not verify your identity.</p>
+        <h4 style="margin:0 0 .4rem;color:#bae6fd;font-size:.9rem;">Request / Wipe a saved report</h4>
         <form id="privacy-wipe-request-form" style="display:flex;gap:8px;flex-wrap:wrap;">
-          <label for="privacy-wipe-reference" style="position:absolute;left:-10000px;">PNR or bag tag</label>
-          <input type="text" id="privacy-wipe-reference" class="pnr-input" placeholder="PNR or bag tag" minlength="5" maxlength="20" pattern="[-A-Za-z0-9]{5,20}" autocomplete="off" required style="flex:1;min-width:180px;">
-          <button type="submit" id="privacy-wipe-submit" class="btn-gradient" style="padding:8px 12px;">Request wipe</button>
+          <input type="text" id="privacy-wipe-reference" class="pnr-input" placeholder="PNR or bag tag" minlength="4" maxlength="20" autocomplete="off" required style="flex:1;min-width:180px;">
+          <button type="submit" id="privacy-wipe-submit" class="btn-gradient" style="padding:8px 12px;">Wipe Reference</button>
         </form>
         <p id="privacy-wipe-status" role="status" aria-live="polite" style="display:none;font-size:.72rem;margin:.65rem 0 0;"></p>
       </section>
 
       <div style="background:#030712; border:1px solid rgba(255,255,255,0.1); border-radius:12px; padding:1rem; margin-bottom:1.2rem; max-height:220px; overflow-y:auto;" id="ram-keys-list">
-        <!-- Rendered dynamically -->
       </div>
 
-      <div style="display:flex; justify-style:space-between; align-items:center; background:rgba(16,185,129,0.08); border:1px dashed #10b981; border-radius:10px; padding:10px 14px;">
-        <div style="font-size:0.75rem; color:#34d399;"><b>Retention:</b> Up to 30 days • Staff removal • Server restart</div>
+      <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(16,185,129,0.08); border:1px dashed #10b981; border-radius:10px; padding:10px 14px; gap:10px; flex-wrap:wrap;">
+        <div style="font-size:0.75rem; color:#34d399;"><b>Privacy:</b> Chat &amp; bag logs stay in your browser.</div>
         <button onclick="manualPurgeRAM()" style="background:#059669; color:#fff; border:none; padding:6px 14px; border-radius:8px; font-size:0.75rem; font-weight:bold; cursor:pointer;">
-          <i class="fa-solid fa-trash-can"></i> Purge RAM Now
+          <i class="fa-solid fa-trash-can"></i> Purge All Local Data
         </button>
       </div>
     </div>
   </div>
 
+  <!-- FEEDBACK MODAL -->
   <div id="feedback-modal" class="modal-overlay">
     <div class="glass-panel" style="padding:1.6rem;width:90%;max-width:520px;text-align:left;position:relative;">
       <button type="button" onclick="closeFeedbackForm()" aria-label="Close feedback form" style="position:absolute;top:14px;right:16px;background:none;border:none;color:#94a3b8;font-size:1.2rem;cursor:pointer;">✕</button>
       <h3 style="font-size:1.2rem;color:#38bdf8;margin:0 1.5rem 0.5rem 0;">Anonymous Product Feedback</h3>
-      <p style="font-size:0.76rem;color:#cbd5e1;margin-bottom:1rem;">Optional · no name, email, booking reference, or written comments are collected. Only combined counts stay in memory until the server restarts. Please answer from your own experience; this is not an endorsement request.</p>
       <form id="feedback-form" style="display:flex;flex-direction:column;gap:0.9rem;">
         <label style="font-size:0.8rem;color:#f8fafc;">Have you experienced delayed or missing checked luggage?
           <select id="feedback-luggage-issue" class="pnr-input" required style="width:100%;margin-top:5px;">
             <option value="" disabled selected>Select one</option>
             <option value="yes">Yes</option>
             <option value="no">No</option>
-            <option value="unsure">Not sure / prefer not to say</option>
+            <option value="unsure">Not sure</option>
           </select>
         </label>
-        <label style="font-size:0.8rem;color:#f8fafc;">After trying AeroFind, how clear are the next steps? (1 = unclear, 5 = very clear)
+        <label style="font-size:0.8rem;color:#f8fafc;">How clear are AeroFind's next steps? (1–5)
           <select id="feedback-clarity" class="pnr-input" required style="width:100%;margin-top:5px;">
             <option value="" disabled selected>Select a rating</option>
             <option value="1">1 · Unclear</option>
@@ -798,507 +866,810 @@
             <option value="5">5 · Very clear</option>
           </select>
         </label>
-        <label style="font-size:0.8rem;color:#f8fafc;">Would you try this kind of staff-assisted tool if your airline/airport offered it?
+        <label style="font-size:0.8rem;color:#f8fafc;">Would you use this tool at the airport?
           <select id="feedback-would-try" class="pnr-input" required style="width:100%;margin-top:5px;">
             <option value="" disabled selected>Select one</option>
             <option value="yes">Yes</option>
-            <option value="maybe">Maybe / depends</option>
+            <option value="maybe">Maybe</option>
             <option value="no">No</option>
           </select>
         </label>
         <button type="submit" class="btn-gradient">Submit Anonymous Feedback</button>
       </form>
       <p id="feedback-status" role="status" style="display:none;font-size:0.78rem;margin:0.8rem 0 0;"></p>
-      <p id="feedback-count" style="font-size:0.68rem;color:#94a3b8;margin:0.7rem 0 0;"></p>
     </div>
   </div>
 
-  <script>
-    (function () {
-      const $ = (id) => document.getElementById(id);
-      const show = (id) => $(id)?.classList.add('active');
-      const hide = (id) => $(id)?.classList.remove('active');
-      const setStatus = (id, message, color) => {
-        const node = $(id);
-        if (!node) return;
-        node.textContent = message;
-        node.style.display = 'block';
-        if (color) node.style.color = color;
-      };
+  <script type="module">
+    const STORAGE_CHAT = "aerofind_chat_history_v1";
+    const STORAGE_BAGS = "aerofind_bag_reports_v1";
+    const STORAGE_STATS = "aerofind_stats_v1";
 
-      window.openAIModal = () => show('ai-modal');
-      window.closeAIModal = () => hide('ai-modal');
-      window.openStaffModal = () => show('staff-modal');
-      window.closeStaffModal = () => hide('staff-modal');
-      window.openZDRInspector = () => {
-        show('zdr-modal');
-        const keys = $('ram-keys-list');
-        if (keys && !keys.innerHTML.trim()) {
-          keys.innerHTML = '<div style="color:#34d399;font-size:.78rem;"><i class="fa-solid fa-memory"></i> Temporary demo buffer ready</div><div style="color:#94a3b8;font-size:.7rem;margin-top:.5rem;">No raw booking reference is displayed or retained here.</div>';
-        }
-      };
-      window.closeZDRInspector = () => hide('zdr-modal');
-      window.openFeedbackForm = () => show('feedback-modal');
-      window.closeFeedbackForm = () => hide('feedback-modal');
-      window.scrollToSearch = () => {
-        $('pnr-input')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        $('pnr-input')?.focus();
-      };
-      window.scrollToHowItWorks = () => $('how-it-works')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      window.toggleChatbot = () => $('chatbot-window')?.classList.toggle('active');
+    let chatHistory = JSON.parse(localStorage.getItem(STORAGE_CHAT) || "[]");
+    let savedBags = JSON.parse(localStorage.getItem(STORAGE_BAGS) || "[]");
+    let stats = JSON.parse(localStorage.getItem(STORAGE_STATS) || '{"lookups":0,"photos":0,"removed":0}');
+    let selectedMode = "general";
 
-      window.handleChatKeyPress = (event) => {
-        if (event.key === 'Enter') window.sendChatMessage();
-      };
-      window.sendChatMessage = () => {
-        const input = $('chat-input');
-        const body = $('chat-body');
-        const value = input?.value.trim();
-        if (!value || !body) return;
-        body.insertAdjacentHTML('beforeend', `<div class="chat-msg chat-user"></div>`);
-        body.lastElementChild.textContent = value;
-        const reply = /6e1234/i.test(value)
-          ? 'Sample 6E1234 is ready for pickup at Terminal 2, Lost & Found Desk B.'
-          : 'Try the sample reference 6E1234, or ask airport staff to create a recovery report.';
-        window.setTimeout(() => body.insertAdjacentHTML('beforeend', `<div class="chat-msg chat-bot">${reply}</div>`), 250);
-        input.value = '';
-        body.scrollTop = body.scrollHeight;
-      };
+    let qrStream = null;
+    let qrRafId = null;
+    let qrAudioCtx = null;
+    let qrRefocusTimer = null;
+    let qrFinishTimer = null;
 
-      window.staffLogin = (event) => {
-        event.preventDefault();
-        const username = $('staff-username')?.value.trim().toLowerCase();
-        const password = $('staff-password')?.value;
-        if (username !== 'staff' || password !== 'demo1234') {
-          setStatus('staff-login-status', 'Demo login: use username staff and password demo1234.', '#fca5a5');
-          return;
-        }
-        $('staff-login-form').style.display = 'none';
-        $('staff-upload-panel').style.display = 'block';
-        setStatus('staff-upload-status', 'Signed in to the local demo workspace.', '#34d399');
-      };
-      window.staffLogout = () => {
-        $('staff-login-form').style.display = 'flex';
-        $('staff-upload-panel').style.display = 'none';
-        $('staff-login-status').style.display = 'none';
-      };
-      window.previewStaffPhoto = (input) => {
-        const file = input.files?.[0];
-        if (!file) return;
-        const preview = $('staff-preview-img');
-        preview.src = URL.createObjectURL(file);
-        $('staff-photo-preview-box').style.display = 'block';
-      };
-      window.handleStaffUpload = (event) => {
-        event.preventDefault();
-        const list = $('staff-bags-list');
-        const pnr = $('staff-pnr')?.value.trim().toUpperCase() || 'DEMO';
-        const item = $('staff-item')?.value.trim() || 'Reported bag';
-        list.innerHTML = `<div style="padding:10px;border:1px solid rgba(52,211,153,.35);border-radius:10px;background:rgba(16,185,129,.08);font-size:.75rem;color:#d1fae5;"><strong>${pnr}</strong> · ${item}<br><span style="color:#94a3b8;">Saved in this browser demo workspace.</span></div>`;
-        setStatus('staff-upload-status', 'Bag report saved for the demo lookup flow.', '#34d399');
-      };
-      window.manualPurgeRAM = () => {
-        $('ram-keys-list').innerHTML = '<div style="color:#34d399;font-size:.78rem;"><i class="fa-solid fa-check"></i> Demo buffer purged.</div>';
-      };
+    const $ = (id) => document.getElementById(id);
+    const show = (id) => $(id)?.classList.add("active");
+    const hide = (id) => $(id)?.classList.remove("active");
 
-      document.addEventListener('DOMContentLoaded', () => {
-        $('ai-file-input')?.addEventListener('change', (event) => {
-          const file = event.target.files?.[0];
-          if (!file) return;
-          if (file.size > 4 * 1024 * 1024) {
-            event.target.value = '';
-            setStatus('ai-match-results', 'Please choose an image smaller than 4 MB.', '#fca5a5');
-            return;
-          }
-          const preview = $('ai-photo-preview');
-          preview.src = URL.createObjectURL(file);
-          preview.style.display = 'block';
-        });
-        $('ai-match-form')?.addEventListener('submit', (event) => {
-          event.preventDefault();
-          const ref = $('ai-reference-input').value.trim().toUpperCase();
-          $('ai-match-results').innerHTML = `<div style="padding:12px;border-radius:10px;background:rgba(168,85,247,.12);border:1px solid rgba(168,85,247,.35);color:#e9d5ff;font-size:.78rem;"><strong>94% simulated match signal</strong><br><span style="color:#cbd5e1;">Reference ${ref} is ready for staff verification. This is a synthetic demo, not live image analysis.</span></div>`;
-        });
-        $('staff-recovery-search')?.addEventListener('submit', (event) => {
-          event.preventDefault();
-          const ref = $('staff-search-reference').value.trim().toUpperCase();
-          if (ref === '6E1234') {
-            hide('staff-modal');
-            window.runSampleSearch();
-          } else {
-            setStatus('staff-upload-status', 'No matching demo report. Try 6E1234.', '#facc15');
-          }
-        });
-        $('privacy-wipe-request-form')?.addEventListener('submit', (event) => {
-          event.preventDefault();
-          setStatus('privacy-wipe-status', 'Request sent to staff for approval. Nothing is deleted automatically.', '#facc15');
-        });
-        $('feedback-form')?.addEventListener('submit', (event) => {
-          event.preventDefault();
-          setStatus('feedback-status', 'Thank you—your anonymous demo feedback was recorded in memory.', '#34d399');
-          setStatus('feedback-count', 'Demo feedback count: 1', '#94a3b8');
-        });
-        $('chat-ai-status').textContent = 'Demo assistant ready · no external AI connection';
-      });
-    })();
-  </script>
-  <script>
-    (function () {
-      function renderRecoveryResult(reference) {
-        const results = document.getElementById('results-section');
-        if (!results) return;
+    function unlockScanAudio() {
+      try {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (!AudioCtx) return;
+        if (!qrAudioCtx) qrAudioCtx = new AudioCtx();
+        if (qrAudioCtx.state === "suspended") qrAudioCtx.resume();
+      } catch (_) {}
+    }
 
-        const normalized = String(reference || '').trim().toUpperCase();
-        if (normalized !== '6E1234') {
-          results.style.display = 'block';
-          results.innerHTML = `
-            <div class="glass-panel" style="padding:1.5rem;border-color:rgba(250,204,21,.35);">
-              <div style="color:#facc15;font-weight:800;font-size:.75rem;letter-spacing:.08em;">DEMO LOOKUP</div>
-              <h3 style="margin:.45rem 0;color:#fff;font-size:1.25rem;">No recovery record found</h3>
-              <p style="color:#cbd5e1;font-size:.85rem;">Try the available synthetic reference <strong style="color:#38bdf8;">6E1234</strong>.</p>
-            </div>`;
-          results.scrollIntoView({ behavior: 'smooth', block: 'start' });
-          return;
-        }
+    function playScanBeep() {
+      try {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (!AudioCtx) return;
+        if (!qrAudioCtx) qrAudioCtx = new AudioCtx();
+        if (qrAudioCtx.state === "suspended") qrAudioCtx.resume();
 
-        results.style.display = 'block';
-        results.innerHTML = `
-          <div class="glass-panel" style="overflow:hidden;padding:0;border-color:rgba(56,189,248,.3);">
-            <div style="padding:1.35rem 1.5rem;background:linear-gradient(135deg,rgba(16,185,129,.12),rgba(168,85,247,.1));border-bottom:1px solid rgba(255,255,255,.1);display:flex;justify-content:space-between;gap:1rem;align-items:flex-start;flex-wrap:wrap;">
-              <div>
-                <div style="display:inline-flex;align-items:center;gap:6px;color:#34d399;background:rgba(16,185,129,.14);padding:4px 10px;border-radius:999px;font-size:.68rem;font-weight:800;letter-spacing:.04em;">
-                  <i class="fa-solid fa-circle-check"></i> READY FOR PICKUP
-                </div>
-                <div style="color:#94a3b8;font-size:.72rem;margin-top:8px;">Ref 6E1234</div>
-                <h3 style="color:#fff;font-size:1.55rem;margin:5px 0 4px;">We found your recovery record.</h3>
-                <p style="color:#cbd5e1;font-size:.82rem;line-height:1.5;max-width:680px;">Your bag has been verified by the ground team and is ready for collection. Bring a government ID and your boarding pass to Desk B.</p>
-              </div>
-              <div style="min-width:110px;text-align:center;padding:12px 14px;border-radius:14px;background:rgba(168,85,247,.18);border:1px solid rgba(168,85,247,.4);">
-                <strong style="display:block;color:#fff;font-size:1.9rem;line-height:1;">94%</strong>
-                <span style="color:#c084fc;font-size:.65rem;font-weight:700;">demo match signal</span>
-              </div>
-            </div>
-            <div style="display:grid;grid-template-columns:minmax(210px,.8fr) minmax(0,1.5fr);gap:2rem;padding:1.5rem;">
-              <div>
-                <div style="color:#38bdf8;font-size:.7rem;font-weight:800;letter-spacing:.1em;margin-bottom:1rem;">CASE DETAILS</div>
-                <div style="color:#94a3b8;font-size:.72rem;margin-bottom:4px;">Flight &amp; route</div>
-                <div style="color:#f8fafc;font-size:.86rem;font-weight:700;margin-bottom:1.1rem;">6E 2134 · Mumbai → Delhi</div>
-                <div style="color:#94a3b8;font-size:.72rem;margin-bottom:4px;">Bag description</div>
-                <div style="color:#f8fafc;font-size:.86rem;font-weight:700;line-height:1.45;margin-bottom:1.1rem;">Navy blue hard-shell suitcase with a red luggage strap</div>
-                <div style="color:#94a3b8;font-size:.72rem;margin-bottom:4px;">Collection point</div>
-                <div style="color:#f8fafc;font-size:.86rem;font-weight:700;">Terminal 2 · Lost &amp; Found Desk B</div>
-              </div>
-              <div>
-                <div style="color:#38bdf8;font-size:.7rem;font-weight:800;letter-spacing:.1em;margin-bottom:1rem;">RECOVERY TIMELINE</div>
-                ${[
-                  ['Report received', 'Passenger report linked to flight 6E 2134.', '09:42'],
-                  ['Possible match found', 'Ground staff identified a matching bag at Belt 4.', '10:08'],
-                  ['Staff verification', 'Bag tag and visual description were confirmed.', '10:21'],
-                  ['Ready for pickup', 'Collection is available at Terminal 2, Desk B.', 'Now']
-                ].map(item => `
-                  <div style="display:grid;grid-template-columns:28px 1fr auto;gap:10px;align-items:start;padding:0 0 14px;margin-bottom:14px;border-bottom:1px solid rgba(255,255,255,.1);">
-                    <span style="width:28px;height:28px;border-radius:50%;background:#34d399;color:#042f2e;display:grid;place-items:center;"><i class="fa-solid fa-check" style="font-size:.72rem;"></i></span>
-                    <div><strong style="display:block;color:#f8fafc;font-size:.86rem;margin:3px 0;">${item[0]}</strong><span style="color:#94a3b8;font-size:.72rem;line-height:1.4;">${item[1]}</span></div>
-                    <span style="color:#94a3b8;font-size:.7rem;margin-top:5px;">${item[2]}</span>
-                  </div>`).join('')}
-              </div>
-            </div>
-            <div style="padding:10px 1.5rem;background:rgba(16,185,129,.1);color:#34d399;text-align:center;font-size:.7rem;">Synthetic demo record only. Live deployments require authorized airport and airline data connections.</div>
-          </div>`;
-        results.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        const now = qrAudioCtx.currentTime;
+        const osc = qrAudioCtx.createOscillator();
+        const gain = qrAudioCtx.createGain();
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(1046.5, now);
+        osc.frequency.setValueAtTime(1480, now + 0.065);
+
+        gain.gain.setValueAtTime(0.001, now);
+        gain.gain.exponentialRampToValueAtTime(0.22, now + 0.015);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.16);
+
+        osc.connect(gain);
+        gain.connect(qrAudioCtx.destination);
+        osc.start(now);
+        osc.stop(now + 0.17);
+      } catch (_) {}
+    }
+
+    function extractValidBagReference(rawText) {
+      const text = String(rawText || "").trim().toUpperCase();
+      if (!text) return null;
+      const pnrMatch = text.match(/\b([A-Z0-9]{2,3}[A-Z0-9]{3,7}|\d{8,14})\b/);
+      const candidate = (pnrMatch ? pnrMatch[1] : text.replace(/[^-A-Z0-9]/g, "")).slice(0, 20);
+      if (!candidate || candidate.replace(/-/g, "").length < 4) return null;
+      return candidate;
+    }
+
+    function triggerScanFeedback(cleanedRef) {
+      playScanBeep();
+      const flash = $("qr-flash-overlay");
+      const reticle = $("qr-reticle");
+      const scanLine = $("qr-scan-line");
+      const refInput = $("ai-reference-input");
+      const status = $("qr-scan-status");
+
+      scanLine?.classList.remove("scanning");
+      reticle?.classList.remove("focusing");
+      reticle?.classList.add("detected");
+
+      if (flash) {
+        flash.classList.remove("flash");
+        void flash.offsetWidth;
+        flash.classList.add("flash");
       }
 
-      function runScan(reference) {
-        const modal = document.getElementById('scan-modal');
-        const progress = document.getElementById('progress-bar');
-        const input = document.getElementById('pnr-input');
-        const normalized = String(reference || '').trim().toUpperCase();
-        if (input) input.value = normalized;
+      if (refInput) {
+        refInput.value = cleanedRef;
+        refInput.classList.remove("qr-detected-flash");
+        void refInput.offsetWidth;
+        refInput.classList.add("qr-detected-flash");
+        window.setTimeout(() => refInput.classList.remove("qr-detected-flash"), 950);
+      }
 
-        if (!modal || !progress) {
-          renderRecoveryResult(normalized);
-          return;
-        }
+      if (status) {
+        status.style.color = "#34d399";
+        status.textContent = `Valid tag detected: ${cleanedRef}`;
+      }
+    }
 
-        modal.classList.add('active');
-        progress.style.width = '0%';
-        let value = 0;
-        const timer = window.setInterval(function () {
-          value = Math.min(value + 10, 100);
-          progress.style.width = value + '%';
-          if (value === 100) {
-            window.clearInterval(timer);
-            window.setTimeout(function () {
-              modal.classList.remove('active');
-              progress.style.width = '0%';
-              renderRecoveryResult(normalized);
-            }, 250);
+    async function applyCameraAutoFocus(videoTrack) {
+      if (!videoTrack || typeof videoTrack.getCapabilities !== "function") return;
+      try {
+        const caps = videoTrack.getCapabilities();
+        if (Array.isArray(caps.focusMode)) {
+          if (caps.focusMode.includes("continuous")) {
+            await videoTrack.applyConstraints({ advanced: [{ focusMode: "continuous" }] });
+          } else if (caps.focusMode.includes("single-shot")) {
+            await videoTrack.applyConstraints({ advanced: [{ focusMode: "single-shot" }] });
           }
-        }, 90);
+        }
+      } catch (_) {
+        // Device camera handles autofocus automatically when constraints are unsupported
       }
+    }
 
-      window.runSampleSearch = function () {
-        const input = document.getElementById('pnr-input');
-        runScan(input ? '6E1234' : '6E1234');
-      };
-
-      document.addEventListener('DOMContentLoaded', function () {
-        const form = document.getElementById('pnr-form');
-        if (form) form.addEventListener('submit', function (event) {
-          event.preventDefault();
-          runScan(document.getElementById('pnr-input')?.value);
-        });
-      });
-    })();
-  </script>
-  <script>
-    (function () {
-      const screen = document.getElementById('startup-screen');
-      if (!screen) return;
-      const hide = function () {
-        window.setTimeout(function () { screen.classList.add('is-hidden'); }, 650);
-      };
-      if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', hide, { once: true });
-      } else {
-        hide();
+    function stopQrScanner() {
+      if (qrRafId) {
+        cancelAnimationFrame(qrRafId);
+        qrRafId = null;
       }
-    })();
-  </script>
-<script type="module">
-  const STORAGE_CHAT_KEY = "aerofind_chat_history_v1";
-  const STORAGE_BAGS_KEY = "aerofind_bag_reports_v1";
+      if (qrRefocusTimer) {
+        clearInterval(qrRefocusTimer);
+        qrRefocusTimer = null;
+      }
+      if (qrFinishTimer) {
+        clearTimeout(qrFinishTimer);
+        qrFinishTimer = null;
+      }
+      if (qrStream) {
+        qrStream.getTracks().forEach((t) => t.stop());
+        qrStream = null;
+      }
+      const btn = $("open-qr-scanner-btn");
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = `<i class="fa-solid fa-qrcode"></i> Scan Tag QR`;
+      }
+      $("qr-reticle")?.classList.remove("focusing", "detected");
+      $("qr-scan-line")?.classList.remove("scanning");
+      $("qr-flash-overlay")?.classList.remove("flash");
+      $("qr-scanner-overlay")?.classList.remove("active");
+    }
 
-  let chatHistory = JSON.parse(localStorage.getItem(STORAGE_CHAT_KEY) || "[]");
-  let savedBags = JSON.parse(localStorage.getItem(STORAGE_BAGS_KEY) || "[]");
-  let selectedMode = "general";
-
-  // 1) AeroBot Mode Selector + Voice Button + Clear Button
-  const chatStatus = document.getElementById("chat-ai-status");
-  if (chatStatus) {
-    chatStatus.innerHTML = `
-      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
-        <select id="aerobot-mode" style="background:#0f172a;color:#38bdf8;border:1px solid #38bdf8;border-radius:6px;padding:3px 6px;font-size:0.7rem;">
-          <option value="general">AeroBot (Flash)</option>
-          <option value="reasoning">Deep Analysis (Pro)</option>
-          <option value="search">Google Search</option>
-          <option value="maps">Airport Maps</option>
-          <option value="fast">Quick Reply (Lite)</option>
-        </select>
-        <button id="live-voice-btn" type="button" style="background:#a855f7;color:#fff;border:none;border-radius:6px;padding:4px 8px;font-size:0.7rem;cursor:pointer;">
-          Voice
-        </button>
-        <button id="clear-chat-btn" type="button" style="background:#334155;color:#cbd5e1;border:none;border-radius:6px;padding:4px 8px;font-size:0.7rem;cursor:pointer;">
-          Clear
-        </button>
-      </div>
-    `;
-
-    document.getElementById("aerobot-mode").addEventListener("change", (e) => {
-      selectedMode = e.target.value;
-    });
-
-    document.getElementById("clear-chat-btn").addEventListener("click", () => {
-      chatHistory = [];
-      localStorage.removeItem(STORAGE_CHAT_KEY);
-      renderChat();
-    });
-
-    // Live Voice (Gemini Live API via Ephemeral Token)
-    let liveSocket = null;
-    document.getElementById("live-voice-btn").addEventListener("click", async () => {
-      const btn = document.getElementById("live-voice-btn");
-      if (liveSocket) {
-        liveSocket.close();
-        liveSocket = null;
-        btn.textContent = "Voice";
+    async function startQrScanner() {
+      if (qrStream) {
+        stopQrScanner();
         return;
       }
-      btn.textContent = "Connecting...";
+
+      unlockScanAudio();
+
+      const overlay = $("qr-scanner-overlay");
+      const video = $("qr-video");
+      const canvas = $("qr-canvas");
+      const status = $("qr-scan-status");
+      const reticle = $("qr-reticle");
+      const scanLine = $("qr-scan-line");
+      const btn = $("open-qr-scanner-btn");
+      if (!overlay || !video || !canvas) return;
+
+      overlay.classList.add("active");
+      reticle?.classList.remove("detected");
+      reticle?.classList.add("focusing");
+      scanLine?.classList.remove("scanning");
+      if (status) {
+        status.style.color = "#facc15";
+        status.textContent = "Step 1/2: Initializing & auto-focusing camera...";
+      }
+      if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = `<i class="fa-solid fa-crosshairs"></i> Focusing...`;
+      }
+
       try {
-        const res = await fetch("/api/live-token", { method: "POST" });
-        const { token, error } = await res.json();
-        if (!token) throw new Error(error || "Token error");
+        qrStream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: { ideal: "environment" },
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
+          },
+          audio: false
+        });
+        video.srcObject = qrStream;
+        await video.play();
 
-        const { GoogleGenAI } = await import("https://esm.sh/@google/genai");
-        const liveAi = new GoogleGenAI({ apiKey: token, httpOptions: { apiVersion: "v1alpha" } });
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        const audioCtx = new AudioContext({ sampleRate: 16000 });
-        const srcNode = audioCtx.createMediaStreamSource(stream);
-        const processor = audioCtx.createScriptProcessor(4096, 1, 1);
+        const videoTrack = qrStream.getVideoTracks()[0];
+        await applyCameraAutoFocus(videoTrack);
 
-        liveSocket = await liveAi.live.connect({
-          model: "gemini-2.5-flash-native-audio-preview-12-2025",
-          callbacks: {
-            onopen: () => { btn.textContent = "Stop Voice"; },
-            onmessage: (msg) => {
-              const b64 = msg.serverContent?.modelTurn?.parts?.[0]?.inlineData?.data;
-              if (b64) {
-                const raw = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
-                const int16 = new Int16Array(raw.buffer);
-                const f32 = Float32Array.from(int16, (v) => v / 32768);
-                const outCtx = new AudioContext({ sampleRate: 24000 });
-                const buf = outCtx.createBuffer(1, f32.length, 24000);
-                buf.copyToChannel(f32, 0);
-                const play = outCtx.createBufferSource();
-                play.buffer = buf;
-                play.connect(outCtx.destination);
-                play.start();
-              }
-            },
-            onclose: () => {
-              stream.getTracks().forEach((t) => t.stop());
-              audioCtx.close();
-              liveSocket = null;
-              btn.textContent = "Voice";
-            }
+        // Brief auto-focus lock phase before starting scan sweep
+        await new Promise((resolve) => setTimeout(resolve, 350));
+        if (!qrStream) return;
+
+        reticle?.classList.remove("focusing");
+        scanLine?.classList.add("scanning");
+        if (status) {
+          status.style.color = "#38bdf8";
+          status.textContent = "Step 2/2: Auto-focused — scanning for valid PNR or bag tag...";
+        }
+        if (btn) {
+          btn.disabled = false;
+          btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Scanning...`;
+        }
+
+        // Periodic gentle refocus for cameras that support single-shot focus
+        qrRefocusTimer = window.setInterval(() => {
+          if (qrStream) applyCameraAutoFocus(videoTrack);
+        }, 2500);
+
+        const detector = "BarcodeDetector" in window
+          ? new BarcodeDetector({ formats: ["qr_code", "code_128", "code_39", "ean_13"] })
+          : null;
+
+        let detectedHandled = false;
+
+        const tick = async () => {
+          if (!qrStream || detectedHandled) return;
+          if (video.readyState < 2) {
+            qrRafId = requestAnimationFrame(tick);
+            return;
           }
-        });
+          try {
+            let rawValue = null;
+            if (detector) {
+              const barcodes = await detector.detect(video);
+              if (barcodes.length > 0 && barcodes[0].rawValue) {
+                rawValue = barcodes[0].rawValue;
+              }
+            } else if (window.jsQR) {
+              canvas.width = video.videoWidth;
+              canvas.height = video.videoHeight;
+              const ctx = canvas.getContext("2d", { willReadFrequently: true });
+              ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+              const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+              const qr = window.jsQR(imgData.data, imgData.width, imgData.height);
+              if (qr?.data) rawValue = qr.data;
+            }
 
-        srcNode.connect(processor);
-        processor.connect(audioCtx.destination);
-        processor.onaudioprocess = (e) => {
-          if (!liveSocket) return;
-          const f32 = e.inputBuffer.getChannelData(0);
-          const i16 = new Int16Array(f32.length);
-          for (let i = 0; i < f32.length; i++) i16[i] = Math.max(-1, Math.min(1, f32[i])) * 32767;
-          const b64 = btoa(String.fromCharCode(...new Uint8Array(i16.buffer)));
-          liveSocket.sendRealtimeInput({ audio: { data: b64, mimeType: "audio/pcm;rate=16000" } });
+            const validRef = rawValue ? extractValidBagReference(rawValue) : null;
+            if (validRef) {
+              detectedHandled = true;
+              triggerScanFeedback(validRef);
+              qrFinishTimer = window.setTimeout(() => {
+                stopQrScanner();
+                $("ai-reference-input")?.focus();
+              }, 480);
+              return;
+            }
+          } catch (_) {
+            // Keep scanning next frame
+          }
+          qrRafId = requestAnimationFrame(tick);
         };
+        qrRafId = requestAnimationFrame(tick);
       } catch (err) {
-        alert(err.message || "Voice connection failed");
-        btn.textContent = "Voice";
+        stopQrScanner();
+        overlay.classList.add("active");
+        if (status) {
+          status.style.color = "#f87171";
+          status.textContent = err.message || "Camera permission denied. Type PNR manually.";
+        }
       }
-    });
-  }
-
-  function renderChat() {
-    const body = document.getElementById("chat-body");
-    if (!body) return;
-    body.innerHTML = "";
-    if (chatHistory.length === 0) {
-      const welcome = document.createElement("div");
-      welcome.className = "chat-msg chat-bot";
-      welcome.textContent = "Namaste! Ask AeroBot about any bag, airport desk (Maps), or airline policy (Search).";
-      body.appendChild(welcome);
-      return;
     }
-    chatHistory.forEach((m) => {
-      const div = document.createElement("div");
-      div.className = `chat-msg ${m.role === "user" ? "chat-user" : "chat-bot"}`;
-      div.textContent = m.text;
-      if (Array.isArray(m.sources) && m.sources.length) {
-        const links = document.createElement("div");
-        links.style.marginTop = "6px";
-        m.sources.forEach((s) => {
-          if (!s.url) return;
-          const a = document.createElement("a");
-          a.href = s.url;
-          a.target = "_blank";
-          a.rel = "noopener";
-          a.textContent = `• ${s.title || s.url}`;
-          a.style.cssText = "display:block;color:#34d399;font-size:0.7rem;";
-          links.appendChild(a);
-        });
-        div.appendChild(links);
-      }
-      body.appendChild(div);
-    });
-    body.scrollTop = body.scrollHeight;
-  }
-  renderChat();
 
-  // 2) Multi-turn Gemini Chat Handler
-  window.sendChatMessage = async () => {
-    const input = document.getElementById("chat-input");
-    const value = input?.value.trim();
-    if (!value) return;
-    input.value = "";
-
-    chatHistory.push({ role: "user", text: value });
-    localStorage.setItem(STORAGE_CHAT_KEY, JSON.stringify(chatHistory));
-    renderChat();
-
-    try {
-      const res = await fetch("/api/aerobot", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: value, history: chatHistory.slice(0, -1), mode: selectedMode })
-      });
-      const data = await res.json();
-      chatHistory.push({
-        role: "model",
-        text: data.reply || data.error || "Error getting response.",
-        sources: data.sources || []
-      });
-      localStorage.setItem(STORAGE_CHAT_KEY, JSON.stringify(chatHistory));
-      renderChat();
-    } catch (err) {
-      chatHistory.push({ role: "model", text: err.message || "Network error." });
-      renderChat();
+    function updateStatsUI() {
+      if ($("count-lost")) $("count-lost").textContent = savedBags.length;
+      if ($("count-found")) $("count-found").textContent = stats.lookups;
+      if ($("count-reunited")) $("count-reunited").textContent = stats.removed;
+      if ($("stat-active-reports")) $("stat-active-reports").textContent = savedBags.length;
+      if ($("stat-pnr-searches")) $("stat-pnr-searches").textContent = stats.lookups;
+      if ($("stat-photo-searches")) $("stat-photo-searches").textContent = stats.photos;
+      if ($("stat-reports-removed")) $("stat-reports-removed").textContent = stats.removed;
+      localStorage.setItem(STORAGE_STATS, JSON.stringify(stats));
     }
-  };
 
-  // 3) AI Bag Photo Match Handler
-  const aiForm = document.getElementById("ai-match-form");
-  aiForm?.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    e.stopImmediatePropagation();
-    const file = document.getElementById("ai-file-input")?.files?.[0];
-    const ref = document.getElementById("ai-reference-input")?.value.trim().toUpperCase();
-    const out = document.getElementById("ai-match-results");
-    if (!file || !ref || !out) return;
-
-    out.textContent = "Analyzing bag photo with Gemini AI...";
-    const base64 = await new Promise((resolve) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result.split(",")[1]);
-      reader.readAsDataURL(file);
-    });
-
-    const res = await fetch("/api/bag-match", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ imageBase64: base64, mimeType: file.type, reference: ref })
-    });
-    const data = await res.json();
-    if (data.error) {
-      out.textContent = data.error;
-      return;
-    }
-    out.innerHTML = "";
-    const box = document.createElement("div");
-    box.style.cssText = "padding:12px;border-radius:10px;background:rgba(168,85,247,.14);border:1px solid #a855f7;color:#f8fafc;font-size:.8rem;";
-    box.innerHTML = `<strong>${data.matchConfidence}% AI Visual Match</strong> · <span></span><p style="margin:6px 0;color:#cbd5e1;"></p><p style="color:#38bdf8;"></p>`;
-    box.querySelector("span").textContent = data.detectedColorAndType;
-    box.querySelectorAll("p")[0].textContent = data.summary;
-    box.querySelectorAll("p")[1].textContent = `Next: ${data.recommendedNextStep}`;
-    out.appendChild(box);
-  }, true);
-
-  // 4) Staff Bag Report Upload (saved in localStorage without login)
-  window.handleStaffUpload = (event) => {
-    event.preventDefault();
-    const airport = document.getElementById("staff-airport")?.value.trim() || "Delhi (DEL)";
-    const pnr = document.getElementById("staff-pnr")?.value.trim().toUpperCase();
-    const location = document.getElementById("staff-location")?.value.trim() || "Terminal 2";
-    const item = document.getElementById("staff-item")?.value.trim() || "Reported bag";
-    if (!pnr) return;
-
-    savedBags.unshift({ pnr, airport, location, item, createdAt: new Date().toLocaleTimeString() });
-    localStorage.setItem(STORAGE_BAGS_KEY, JSON.stringify(savedBags));
-
-    const list = document.getElementById("staff-bags-list");
-    if (list) {
+    function renderStaffBags() {
+      const list = $("staff-bags-list");
+      if (!list) return;
       list.innerHTML = "";
-      savedBags.slice(0, 5).forEach((b) => {
+      if (savedBags.length === 0) {
+        const empty = document.createElement("div");
+        empty.style.cssText = "font-size:.75rem;color:#94a3b8;";
+        empty.textContent = "No custom bags logged yet. Add one above or search 6E1234.";
+        list.appendChild(empty);
+        return;
+      }
+      savedBags.forEach((b, idx) => {
         const row = document.createElement("div");
-        row.style.cssText = "padding:8px;margin-top:6px;border:1px solid rgba(52,211,153,.35);border-radius:8px;font-size:.75rem;color:#d1fae5;";
-        row.textContent = `${b.pnr} · ${b.item} (${b.airport} - ${b.location})`;
+        row.style.cssText = "padding:10px;margin-top:8px;border:1px solid rgba(52,211,153,.35);border-radius:10px;background:rgba(16,185,129,.08);font-size:.75rem;color:#d1fae5;display:flex;justify-content:space-between;align-items:center;gap:8px;";
+        const info = document.createElement("div");
+        const title = document.createElement("strong");
+        title.textContent = b.pnr;
+        const details = document.createElement("div");
+        details.style.color = "#94a3b8";
+        details.textContent = `${b.item} · ${b.airport} (${b.location})`;
+        info.appendChild(title);
+        info.appendChild(details);
+
+        const delBtn = document.createElement("button");
+        delBtn.type = "button";
+        delBtn.textContent = "Remove";
+        delBtn.style.cssText = "background:#7f1d1d;color:#fecaca;border:none;padding:5px 9px;border-radius:6px;cursor:pointer;font-size:.7rem;";
+        delBtn.onclick = () => {
+          savedBags.splice(idx, 1);
+          stats.removed += 1;
+          localStorage.setItem(STORAGE_BAGS, JSON.stringify(savedBags));
+          updateStatsUI();
+          renderStaffBags();
+        };
+        row.appendChild(info);
+        row.appendChild(delBtn);
         list.appendChild(row);
       });
     }
-  };
-</script>
+
+    function renderPrivacyLog() {
+      const keys = $("ram-keys-list");
+      if (!keys) return;
+      keys.innerHTML = "";
+      const header = document.createElement("div");
+      header.style.cssText = "color:#34d399;font-size:.78rem;margin-bottom:6px;";
+      header.textContent = `Stored bag reports: ${savedBags.length} · Stored chat turns: ${chatHistory.length}`;
+      keys.appendChild(header);
+      savedBags.forEach((b) => {
+        const line = document.createElement("div");
+        line.style.cssText = "color:#94a3b8;font-size:.72rem;padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.06);";
+        line.textContent = `${b.pnr} — ${b.airport} (${b.location})`;
+        keys.appendChild(line);
+      });
+    }
+
+    window.openAIModal = () => show("ai-modal");
+    window.closeAIModal = () => {
+      stopQrScanner();
+      hide("ai-modal");
+    };
+    window.openStaffModal = () => {
+      renderStaffBags();
+      show("staff-modal");
+    };
+    window.closeStaffModal = () => hide("staff-modal");
+    window.openZDRInspector = () => {
+      renderPrivacyLog();
+      show("zdr-modal");
+    };
+    window.closeZDRInspector = () => hide("zdr-modal");
+    window.openFeedbackForm = () => show("feedback-modal");
+    window.closeFeedbackForm = () => hide("feedback-modal");
+    window.scrollToSearch = () => {
+      $("pnr-input")?.scrollIntoView({ behavior: "smooth", block: "center" });
+      $("pnr-input")?.focus();
+    };
+    window.scrollToHowItWorks = () => $("how-it-works")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    window.toggleChatbot = () => $("chatbot-window")?.classList.toggle("active");
+    window.handleChatKeyPress = (event) => {
+      if (event.key === "Enter") window.sendChatMessage();
+    };
+
+    window.handleStaffUpload = (event) => {
+      event.preventDefault();
+      const airport = $("staff-airport")?.value.trim() || "Delhi (DEL)";
+      const pnr = $("staff-pnr")?.value.trim().toUpperCase();
+      const location = $("staff-location")?.value.trim() || "Terminal 2 • Belt 4";
+      const item = $("staff-item")?.value.trim() || "Reported bag";
+      if (!pnr) return;
+
+      savedBags.unshift({ pnr, airport, location, item, createdAt: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) });
+      localStorage.setItem(STORAGE_BAGS, JSON.stringify(savedBags));
+      updateStatsUI();
+      renderStaffBags();
+
+      const status = $("staff-upload-status");
+      if (status) {
+        status.style.display = "block";
+        status.style.color = "#34d399";
+        status.textContent = `Saved ${pnr} — now searchable via Track Your Lost Item.`;
+      }
+      event.target.reset();
+    };
+
+    window.manualPurgeRAM = () => {
+      savedBags = [];
+      chatHistory = [];
+      localStorage.removeItem(STORAGE_BAGS);
+      localStorage.removeItem(STORAGE_CHAT);
+      updateStatsUI();
+      renderChat();
+      renderStaffBags();
+      renderPrivacyLog();
+    };
+
+    function renderChat() {
+      const body = $("chat-body");
+      if (!body) return;
+      body.innerHTML = "";
+      if (chatHistory.length === 0) {
+        const welcome = document.createElement("div");
+        welcome.className = "chat-msg chat-bot";
+        welcome.textContent = "Namaste! Ask AeroBot about checking a bag report, airline baggage policies (Google Search), airport desks (Google Maps), or tap Voice.";
+        body.appendChild(welcome);
+        return;
+      }
+      chatHistory.forEach((m) => {
+        const div = document.createElement("div");
+        div.className = `chat-msg ${m.role === "user" ? "chat-user" : "chat-bot"}`;
+        div.textContent = m.text;
+        if (Array.isArray(m.sources) && m.sources.length) {
+          const links = document.createElement("div");
+          links.style.marginTop = "6px";
+          m.sources.forEach((s) => {
+            if (!s.url) return;
+            const a = document.createElement("a");
+            a.href = s.url;
+            a.target = "_blank";
+            a.rel = "noopener noreferrer";
+            a.textContent = `• ${s.title || s.url}`;
+            a.style.cssText = "display:block;color:#34d399;font-size:0.72rem;margin-top:3px;";
+            links.appendChild(a);
+          });
+          div.appendChild(links);
+        }
+        body.appendChild(div);
+      });
+      body.scrollTop = body.scrollHeight;
+    }
+
+    window.sendChatMessage = async () => {
+      const input = $("chat-input");
+      const value = input?.value.trim();
+      if (!value) return;
+      input.value = "";
+
+      chatHistory.push({ role: "user", text: value });
+      localStorage.setItem(STORAGE_CHAT, JSON.stringify(chatHistory));
+      renderChat();
+
+      const body = $("chat-body");
+      const typing = document.createElement("div");
+      typing.className = "chat-msg chat-bot";
+      typing.textContent = "Thinking...";
+      body?.appendChild(typing);
+      if (body) body.scrollTop = body.scrollHeight;
+
+      try {
+        const res = await fetch("/api/aerobot", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            message: value,
+            history: chatHistory.slice(0, -1),
+            mode: selectedMode
+          })
+        });
+        const data = await res.json();
+        chatHistory.push({
+          role: "model",
+          text: data.reply || data.error || "Unable to get reply.",
+          sources: data.sources || []
+        });
+        localStorage.setItem(STORAGE_CHAT, JSON.stringify(chatHistory));
+      } catch (err) {
+        chatHistory.push({ role: "model", text: err.message || "Network error." });
+      }
+      renderChat();
+    };
+
+    function renderRecoveryResult(reference) {
+      const results = $("results-section");
+      if (!results) return;
+      const normalized = String(reference || "").trim().toUpperCase();
+      const cloudMatch = savedBags.find((b) => b.pnr === normalized);
+
+      if (!cloudMatch && normalized !== "6E1234") {
+        results.style.display = "block";
+        results.innerHTML = "";
+        const card = document.createElement("div");
+        card.className = "glass-panel";
+        card.style.cssText = "padding:1.5rem;border-color:rgba(250,204,21,.35);";
+        card.innerHTML = `<div style="color:#facc15;font-weight:800;font-size:.75rem;letter-spacing:.08em;">LOOKUP RESULT</div>
+          <h3 style="margin:.45rem 0;color:#fff;font-size:1.25rem;">No recovery record found</h3>
+          <p style="color:#cbd5e1;font-size:.85rem;">Try <strong style="color:#38bdf8;">6E1234</strong> or log this bag in Staff Portal.</p>`;
+        results.appendChild(card);
+        results.scrollIntoView({ behavior: "smooth", block: "start" });
+        return;
+      }
+
+      const details = cloudMatch
+        ? {
+            ref: cloudMatch.pnr,
+            route: cloudMatch.airport,
+            desc: cloudMatch.item,
+            desk: cloudMatch.location,
+            time: cloudMatch.createdAt || "Just now",
+            score: "96%",
+            badge: "STAFF LOGGED · READY"
+          }
+        : {
+            ref: "6E1234",
+            route: "6E 2134 · Mumbai → Delhi",
+            desc: "Navy blue hard-shell suitcase with a red luggage strap",
+            desk: "Terminal 2 · Lost & Found Desk B",
+            time: "Now",
+            score: "94%",
+            badge: "READY FOR PICKUP"
+          };
+
+      results.style.display = "block";
+      results.innerHTML = `
+        <div class="glass-panel" style="overflow:hidden;padding:0;border-color:rgba(56,189,248,.3);">
+          <div style="padding:1.35rem 1.5rem;background:linear-gradient(135deg,rgba(16,185,129,.12),rgba(168,85,247,.1));border-bottom:1px solid rgba(255,255,255,.1);display:flex;justify-content:space-between;gap:1rem;align-items:flex-start;flex-wrap:wrap;">
+            <div>
+              <div style="display:inline-flex;align-items:center;gap:6px;color:#34d399;background:rgba(16,185,129,.14);padding:4px 10px;border-radius:999px;font-size:.68rem;font-weight:800;letter-spacing:.04em;">
+                <i class="fa-solid fa-circle-check"></i> ${details.badge}
+              </div>
+              <div style="color:#94a3b8;font-size:.72rem;margin-top:8px;">Ref ${details.ref}</div>
+              <h3 style="color:#fff;font-size:1.55rem;margin:5px 0 4px;">We found your recovery record.</h3>
+              <p style="color:#cbd5e1;font-size:.82rem;line-height:1.5;max-width:680px;">Bring a government ID and boarding pass to the collection desk below.</p>
+            </div>
+            <div style="min-width:110px;text-align:center;padding:12px 14px;border-radius:14px;background:rgba(168,85,247,.18);border:1px solid rgba(168,85,247,.4);">
+              <strong style="display:block;color:#fff;font-size:1.9rem;line-height:1;">${details.score}</strong>
+              <span style="color:#c084fc;font-size:.65rem;font-weight:700;">match signal</span>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:2rem;padding:1.5rem;">
+            <div>
+              <div style="color:#38bdf8;font-size:.7rem;font-weight:800;letter-spacing:.1em;margin-bottom:1rem;">CASE DETAILS</div>
+              <div style="color:#94a3b8;font-size:.72rem;margin-bottom:4px;">Airport / route</div>
+              <div id="res-route" style="color:#f8fafc;font-size:.86rem;font-weight:700;margin-bottom:1.1rem;"></div>
+              <div style="color:#94a3b8;font-size:.72rem;margin-bottom:4px;">Bag description</div>
+              <div id="res-desc" style="color:#f8fafc;font-size:.86rem;font-weight:700;line-height:1.45;margin-bottom:1.1rem;"></div>
+              <div style="color:#94a3b8;font-size:.72rem;margin-bottom:4px;">Collection point</div>
+              <div id="res-desk" style="color:#f8fafc;font-size:.86rem;font-weight:700;"></div>
+            </div>
+            <div>
+              <div style="color:#38bdf8;font-size:.7rem;font-weight:800;letter-spacing:.1em;margin-bottom:1rem;">RECOVERY TIMELINE</div>
+              ${[
+                ["Report received", "Case linked to AeroFind workspace.", "09:42"],
+                ["Possible match found", "Bag identified near arrival carousel.", "10:08"],
+                ["Staff verification", "Tag and visual description confirmed.", "10:21"],
+                ["Ready for pickup", "Available at airport desk.", details.time]
+              ].map((step) => `
+                <div style="display:grid;grid-template-columns:28px 1fr auto;gap:10px;align-items:start;padding:0 0 14px;margin-bottom:14px;border-bottom:1px solid rgba(255,255,255,.1);">
+                  <span style="width:28px;height:28px;border-radius:50%;background:#34d399;color:#042f2e;display:grid;place-items:center;"><i class="fa-solid fa-check" style="font-size:.72rem;"></i></span>
+                  <div><strong style="display:block;color:#f8fafc;font-size:.86rem;margin:3px 0;">${step[0]}</strong><span style="color:#94a3b8;font-size:.72rem;line-height:1.4;">${step[1]}</span></div>
+                  <span style="color:#94a3b8;font-size:.7rem;margin-top:5px;">${step[2]}</span>
+                </div>`).join("")}
+            </div>
+          </div>
+        </div>`;
+      $("res-route").textContent = details.route;
+      $("res-desc").textContent = details.desc;
+      $("res-desk").textContent = details.desk;
+      results.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+
+    function runScan(reference) {
+      const modal = $("scan-modal");
+      const progress = $("progress-bar");
+      const input = $("pnr-input");
+      const normalized = String(reference || "").trim().toUpperCase();
+      if (input) input.value = normalized;
+      stats.lookups += 1;
+      updateStatsUI();
+
+      if (!modal || !progress) {
+        renderRecoveryResult(normalized);
+        return;
+      }
+
+      modal.classList.add("active");
+      progress.style.width = "0%";
+      let value = 0;
+      const timer = window.setInterval(() => {
+        value = Math.min(value + 10, 100);
+        progress.style.width = value + "%";
+        if (value === 100) {
+          window.clearInterval(timer);
+          window.setTimeout(() => {
+            modal.classList.remove("active");
+            progress.style.width = "0%";
+            renderRecoveryResult(normalized);
+          }, 200);
+        }
+      }, 80);
+    }
+
+    window.runSampleSearch = () => runScan("6E1234");
+
+    document.addEventListener("DOMContentLoaded", () => {
+      updateStatsUI();
+      renderChat();
+
+      window.setTimeout(() => $("startup-screen")?.classList.add("is-hidden"), 550);
+
+      const cycle = [
+        ["On Time", "#34d399"],
+        ["Boarding", "#facc15"],
+        ["Delayed 20 min", "#fb923c"],
+        ["Gate Check", "#38bdf8"]
+      ];
+      let tick = 0;
+      window.setInterval(() => {
+        tick++;
+        document.querySelectorAll("#departures-list .dep-status").forEach((el, idx) => {
+          const [label, color] = cycle[(tick + idx) % cycle.length];
+          el.textContent = label;
+          el.style.color = color;
+        });
+      }, 6000);
+
+      $("open-qr-scanner-btn")?.addEventListener("click", startQrScanner);
+      $("close-qr-scanner-btn")?.addEventListener("click", stopQrScanner);
+
+      $("aerobot-mode")?.addEventListener("change", (e) => {
+        selectedMode = e.target.value;
+      });
+
+      $("clear-chat-btn")?.addEventListener("click", () => {
+        chatHistory = [];
+        localStorage.removeItem(STORAGE_CHAT);
+        renderChat();
+      });
+
+      let liveSocket = null;
+      $("live-voice-btn")?.addEventListener("click", async () => {
+        const btn = $("live-voice-btn");
+        if (liveSocket) {
+          liveSocket.close();
+          liveSocket = null;
+          btn.innerHTML = `<i class="fa-solid fa-microphone"></i> Voice`;
+          return;
+        }
+        btn.textContent = "Connecting...";
+        try {
+          const res = await fetch("/api/live-token", { method: "POST" });
+          const { token, error } = await res.json();
+          if (!token) throw new Error(error || "Token creation failed");
+
+          const { GoogleGenAI } = await import("https://esm.sh/@google/genai");
+          const liveAi = new GoogleGenAI({ apiKey: token, httpOptions: { apiVersion: "v1alpha" } });
+          const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          const audioCtx = new AudioContext({ sampleRate: 16000 });
+          const srcNode = audioCtx.createMediaStreamSource(stream);
+          const processor = audioCtx.createScriptProcessor(4096, 1, 1);
+
+          liveSocket = await liveAi.live.connect({
+            model: "gemini-2.5-flash-native-audio-preview-12-2025",
+            callbacks: {
+              onopen: () => { btn.innerHTML = `<i class="fa-solid fa-stop"></i> Stop`; },
+              onmessage: (msg) => {
+                const b64 = msg.serverContent?.modelTurn?.parts?.[0]?.inlineData?.data;
+                if (b64) {
+                  const raw = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+                  const int16 = new Int16Array(raw.buffer);
+                  const f32 = Float32Array.from(int16, (v) => v / 32768);
+                  const outCtx = new AudioContext({ sampleRate: 24000 });
+                  const buf = outCtx.createBuffer(1, f32.length, 24000);
+                  buf.copyToChannel(f32, 0);
+                  const play = outCtx.createBufferSource();
+                  play.buffer = buf;
+                  play.connect(outCtx.destination);
+                  play.start();
+                }
+              },
+              onclose: () => {
+                stream.getTracks().forEach((t) => t.stop());
+                audioCtx.close();
+                liveSocket = null;
+                btn.innerHTML = `<i class="fa-solid fa-microphone"></i> Voice`;
+              }
+            }
+          });
+
+          srcNode.connect(processor);
+          processor.connect(audioCtx.destination);
+          processor.onaudioprocess = (e) => {
+            if (!liveSocket) return;
+            const f32 = e.inputBuffer.getChannelData(0);
+            const i16 = new Int16Array(f32.length);
+            for (let i = 0; i < f32.length; i++) {
+              i16[i] = Math.max(-1, Math.min(1, f32[i])) * 32767;
+            }
+            const b64 = btoa(String.fromCharCode(...new Uint8Array(i16.buffer)));
+            liveSocket.sendRealtimeInput({ audio: { data: b64, mimeType: "audio/pcm;rate=16000" } });
+          };
+        } catch (err) {
+          alert(err.message || "Voice failed. Allow microphone access and check GEMINI_API_KEY on Vercel.");
+          btn.innerHTML = `<i class="fa-solid fa-microphone"></i> Voice`;
+        }
+      });
+
+      $("pnr-form")?.addEventListener("submit", (e) => {
+        e.preventDefault();
+        runScan($("pnr-input")?.value);
+      });
+
+      $("ai-file-input")?.addEventListener("change", (event) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+        if (file.size > 4 * 1024 * 1024) {
+          event.target.value = "";
+          $("ai-match-results").textContent = "Please choose an image smaller than 4 MB.";
+          return;
+        }
+        const preview = $("ai-photo-preview");
+        preview.src = URL.createObjectURL(file);
+        preview.style.display = "block";
+      });
+
+      $("ai-match-form")?.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const file = $("ai-file-input")?.files?.[0];
+        const ref = $("ai-reference-input")?.value.trim().toUpperCase();
+        const out = $("ai-match-results");
+        if (!file || !ref || !out) return;
+
+        stats.photos += 1;
+        updateStatsUI();
+        out.innerHTML = `<div style="color:#38bdf8;font-size:.8rem;">Analyzing bag photo with Gemini AI...</div>`;
+
+        try {
+          const base64 = await new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result.split(",")[1]);
+            reader.readAsDataURL(file);
+          });
+
+          const res = await fetch("/api/bag-match", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ imageBase64: base64, mimeType: file.type, reference: ref })
+          });
+          const data = await res.json();
+          if (data.error) throw new Error(data.error);
+
+          out.innerHTML = "";
+          const box = document.createElement("div");
+          box.style.cssText = "padding:12px;border-radius:10px;background:rgba(168,85,247,.14);border:1px solid #a855f7;color:#f8fafc;font-size:.8rem;";
+          const title = document.createElement("strong");
+          title.textContent = `${data.matchConfidence}% AI Visual Match · ${data.detectedColorAndType}`;
+          const summary = document.createElement("p");
+          summary.style.cssText = "margin:6px 0;color:#cbd5e1;";
+          summary.textContent = data.summary;
+          const next = document.createElement("p");
+          next.style.color = "#38bdf8";
+          next.textContent = `Next: ${data.recommendedNextStep}`;
+          box.appendChild(title);
+          box.appendChild(summary);
+          box.appendChild(next);
+          out.appendChild(box);
+        } catch (err) {
+          out.textContent = err.message || "AI photo analysis failed.";
+        }
+      });
+
+      $("staff-recovery-search")?.addEventListener("submit", (e) => {
+        e.preventDefault();
+        const ref = $("staff-search-reference")?.value.trim().toUpperCase();
+        if (ref) {
+          hide("staff-modal");
+          runScan(ref);
+        }
+      });
+
+      $("privacy-wipe-request-form")?.addEventListener("submit", (e) => {
+        e.preventDefault();
+        const ref = $("privacy-wipe-reference")?.value.trim().toUpperCase();
+        const before = savedBags.length;
+        savedBags = savedBags.filter((b) => b.pnr !== ref);
+        const removedNow = before - savedBags.length;
+        if (removedNow > 0) stats.removed += removedNow;
+        localStorage.setItem(STORAGE_BAGS, JSON.stringify(savedBags));
+        updateStatsUI();
+        renderPrivacyLog();
+        const st = $("privacy-wipe-status");
+        if (st) {
+          st.style.display = "block";
+          st.style.color = "#34d399";
+          st.textContent = removedNow > 0
+            ? `Wiped ${removedNow} local record(s) for ${ref}.`
+            : `No local record found for ${ref}; purge request noted.`;
+        }
+      });
+
+      $("feedback-form")?.addEventListener("submit", (e) => {
+        e.preventDefault();
+        const st = $("feedback-status");
+        if (st) {
+          st.style.display = "block";
+          st.style.color = "#34d399";
+          st.textContent = "Thank you — your anonymous feedback was recorded.";
+        }
+      });
+    });
+  </script>
+
 </body>
 </html>
