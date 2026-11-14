@@ -9,7 +9,7 @@ export default async function handler(req, res) {
     const { message, history = [], mode = "general" } = req.body || {};
     if (!message) return res.status(400).json({ error: "Message required" });
 
-    let model = "gemini-2.5-flash";
+    let model = "gemini-3.8-flash";
     const config = {
       systemInstruction:
         "You are AeroBot for AeroFind (aerofind.me). Help passengers track lost bags, locate airport lost-and-found desks, and check airline baggage rules. Sample reference 6E1234 is at Terminal 2, Lost & Found Desk B."
