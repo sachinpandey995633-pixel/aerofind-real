@@ -1521,7 +1521,7 @@
           const processor = audioCtx.createScriptProcessor(4096, 1, 1);
 
           liveSocket = await liveAi.live.connect({
-            model: "gemini-2.5-flash-native-audio-preview-12-2025",
+            model: "gemini-3.8-flash-native-audio-preview-12-2025",
             callbacks: {
               onopen: () => { btn.innerHTML = `<i class="fa-solid fa-stop"></i> Stop`; },
               onmessage: (msg) => {
