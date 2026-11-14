@@ -9,16 +9,16 @@ export default async function handler(req, res) {
     const { message, history = [], mode = "general" } = req.body || {};
     if (!message) return res.status(400).json({ error: "Message required" });
 
-    let model = "gemini-1.5-flash";
+    let model = "models/gemini-1.5-flash";
     const config = {
       systemInstruction:
         "You are AeroBot for AeroFind (aerofind.me). Help passengers track lost bags, locate airport lost-and-found desks, and check airline baggage rules. Sample reference 6E1234 is at Terminal 2, Lost & Found Desk B."
     };
 
     if (mode === "reasoning") {
-      model = "gemini-1.5-pro";
+      model = "models/gemini-1.5-pro";
     } else if (mode === "fast") {
-      model = "gemini-1.5-flash-lite";
+      model = "models/gemini-1.5-flash-lite";
     } else if (mode === "search") {
       config.tools = [{ googleSearch: {} }];
     } else if (mode === "maps") {
