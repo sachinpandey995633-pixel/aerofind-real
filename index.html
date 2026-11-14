@@ -1065,6 +1065,240 @@
       }
     })();
   </script>
+<script type="module">
+  const STORAGE_CHAT_KEY = "aerofind_chat_history_v1";
+  const STORAGE_BAGS_KEY = "aerofind_bag_reports_v1";
 
+  let chatHistory = JSON.parse(localStorage.getItem(STORAGE_CHAT_KEY) || "[]");
+  let savedBags = JSON.parse(localStorage.getItem(STORAGE_BAGS_KEY) || "[]");
+  let selectedMode = "general";
+
+  // 1) AeroBot Mode Selector + Voice Button + Clear Button
+  const chatStatus = document.getElementById("chat-ai-status");
+  if (chatStatus) {
+    chatStatus.innerHTML = `
+      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
+        <select id="aerobot-mode" style="background:#0f172a;color:#38bdf8;border:1px solid #38bdf8;border-radius:6px;padding:3px 6px;font-size:0.7rem;">
+          <option value="general">AeroBot (Flash)</option>
+          <option value="reasoning">Deep Analysis (Pro)</option>
+          <option value="search">Google Search</option>
+          <option value="maps">Airport Maps</option>
+          <option value="fast">Quick Reply (Lite)</option>
+        </select>
+        <button id="live-voice-btn" type="button" style="background:#a855f7;color:#fff;border:none;border-radius:6px;padding:4px 8px;font-size:0.7rem;cursor:pointer;">
+          Voice
+        </button>
+        <button id="clear-chat-btn" type="button" style="background:#334155;color:#cbd5e1;border:none;border-radius:6px;padding:4px 8px;font-size:0.7rem;cursor:pointer;">
+          Clear
+        </button>
+      </div>
+    `;
+
+    document.getElementById("aerobot-mode").addEventListener("change", (e) => {
+      selectedMode = e.target.value;
+    });
+
+    document.getElementById("clear-chat-btn").addEventListener("click", () => {
+      chatHistory = [];
+      localStorage.removeItem(STORAGE_CHAT_KEY);
+      renderChat();
+    });
+
+    // Live Voice (Gemini Live API via Ephemeral Token)
+    let liveSocket = null;
+    document.getElementById("live-voice-btn").addEventListener("click", async () => {
+      const btn = document.getElementById("live-voice-btn");
+      if (liveSocket) {
+        liveSocket.close();
+        liveSocket = null;
+        btn.textContent = "Voice";
+        return;
+      }
+      btn.textContent = "Connecting...";
+      try {
+        const res = await fetch("/api/live-token", { method: "POST" });
+        const { token, error } = await res.json();
+        if (!token) throw new Error(error || "Token error");
+
+        const { GoogleGenAI } = await import("https://esm.sh/@google/genai");
+        const liveAi = new GoogleGenAI({ apiKey: token, httpOptions: { apiVersion: "v1alpha" } });
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const audioCtx = new AudioContext({ sampleRate: 16000 });
+        const srcNode = audioCtx.createMediaStreamSource(stream);
+        const processor = audioCtx.createScriptProcessor(4096, 1, 1);
+
+        liveSocket = await liveAi.live.connect({
+          model: "gemini-2.5-flash-native-audio-preview-12-2025",
+          callbacks: {
+            onopen: () => { btn.textContent = "Stop Voice"; },
+            onmessage: (msg) => {
+              const b64 = msg.serverContent?.modelTurn?.parts?.[0]?.inlineData?.data;
+              if (b64) {
+                const raw = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+                const int16 = new Int16Array(raw.buffer);
+                const f32 = Float32Array.from(int16, (v) => v / 32768);
+                const outCtx = new AudioContext({ sampleRate: 24000 });
+                const buf = outCtx.createBuffer(1, f32.length, 24000);
+                buf.copyToChannel(f32, 0);
+                const play = outCtx.createBufferSource();
+                play.buffer = buf;
+                play.connect(outCtx.destination);
+                play.start();
+              }
+            },
+            onclose: () => {
+              stream.getTracks().forEach((t) => t.stop());
+              audioCtx.close();
+              liveSocket = null;
+              btn.textContent = "Voice";
+            }
+          }
+        });
+
+        srcNode.connect(processor);
+        processor.connect(audioCtx.destination);
+        processor.onaudioprocess = (e) => {
+          if (!liveSocket) return;
+          const f32 = e.inputBuffer.getChannelData(0);
+          const i16 = new Int16Array(f32.length);
+          for (let i = 0; i < f32.length; i++) i16[i] = Math.max(-1, Math.min(1, f32[i])) * 32767;
+          const b64 = btoa(String.fromCharCode(...new Uint8Array(i16.buffer)));
+          liveSocket.sendRealtimeInput({ audio: { data: b64, mimeType: "audio/pcm;rate=16000" } });
+        };
+      } catch (err) {
+        alert(err.message || "Voice connection failed");
+        btn.textContent = "Voice";
+      }
+    });
+  }
+
+  function renderChat() {
+    const body = document.getElementById("chat-body");
+    if (!body) return;
+    body.innerHTML = "";
+    if (chatHistory.length === 0) {
+      const welcome = document.createElement("div");
+      welcome.className = "chat-msg chat-bot";
+      welcome.textContent = "Namaste! Ask AeroBot about any bag, airport desk (Maps), or airline policy (Search).";
+      body.appendChild(welcome);
+      return;
+    }
+    chatHistory.forEach((m) => {
+      const div = document.createElement("div");
+      div.className = `chat-msg ${m.role === "user" ? "chat-user" : "chat-bot"}`;
+      div.textContent = m.text;
+      if (Array.isArray(m.sources) && m.sources.length) {
+        const links = document.createElement("div");
+        links.style.marginTop = "6px";
+        m.sources.forEach((s) => {
+          if (!s.url) return;
+          const a = document.createElement("a");
+          a.href = s.url;
+          a.target = "_blank";
+          a.rel = "noopener";
+          a.textContent = `• ${s.title || s.url}`;
+          a.style.cssText = "display:block;color:#34d399;font-size:0.7rem;";
+          links.appendChild(a);
+        });
+        div.appendChild(links);
+      }
+      body.appendChild(div);
+    });
+    body.scrollTop = body.scrollHeight;
+  }
+  renderChat();
+
+  // 2) Multi-turn Gemini Chat Handler
+  window.sendChatMessage = async () => {
+    const input = document.getElementById("chat-input");
+    const value = input?.value.trim();
+    if (!value) return;
+    input.value = "";
+
+    chatHistory.push({ role: "user", text: value });
+    localStorage.setItem(STORAGE_CHAT_KEY, JSON.stringify(chatHistory));
+    renderChat();
+
+    try {
+      const res = await fetch("/api/aerobot", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: value, history: chatHistory.slice(0, -1), mode: selectedMode })
+      });
+      const data = await res.json();
+      chatHistory.push({
+        role: "model",
+        text: data.reply || data.error || "Error getting response.",
+        sources: data.sources || []
+      });
+      localStorage.setItem(STORAGE_CHAT_KEY, JSON.stringify(chatHistory));
+      renderChat();
+    } catch (err) {
+      chatHistory.push({ role: "model", text: err.message || "Network error." });
+      renderChat();
+    }
+  };
+
+  // 3) AI Bag Photo Match Handler
+  const aiForm = document.getElementById("ai-match-form");
+  aiForm?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    const file = document.getElementById("ai-file-input")?.files?.[0];
+    const ref = document.getElementById("ai-reference-input")?.value.trim().toUpperCase();
+    const out = document.getElementById("ai-match-results");
+    if (!file || !ref || !out) return;
+
+    out.textContent = "Analyzing bag photo with Gemini AI...";
+    const base64 = await new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result.split(",")[1]);
+      reader.readAsDataURL(file);
+    });
+
+    const res = await fetch("/api/bag-match", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ imageBase64: base64, mimeType: file.type, reference: ref })
+    });
+    const data = await res.json();
+    if (data.error) {
+      out.textContent = data.error;
+      return;
+    }
+    out.innerHTML = "";
+    const box = document.createElement("div");
+    box.style.cssText = "padding:12px;border-radius:10px;background:rgba(168,85,247,.14);border:1px solid #a855f7;color:#f8fafc;font-size:.8rem;";
+    box.innerHTML = `<strong>${data.matchConfidence}% AI Visual Match</strong> · <span></span><p style="margin:6px 0;color:#cbd5e1;"></p><p style="color:#38bdf8;"></p>`;
+    box.querySelector("span").textContent = data.detectedColorAndType;
+    box.querySelectorAll("p")[0].textContent = data.summary;
+    box.querySelectorAll("p")[1].textContent = `Next: ${data.recommendedNextStep}`;
+    out.appendChild(box);
+  }, true);
+
+  // 4) Staff Bag Report Upload (saved in localStorage without login)
+  window.handleStaffUpload = (event) => {
+    event.preventDefault();
+    const airport = document.getElementById("staff-airport")?.value.trim() || "Delhi (DEL)";
+    const pnr = document.getElementById("staff-pnr")?.value.trim().toUpperCase();
+    const location = document.getElementById("staff-location")?.value.trim() || "Terminal 2";
+    const item = document.getElementById("staff-item")?.value.trim() || "Reported bag";
+    if (!pnr) return;
+
+    savedBags.unshift({ pnr, airport, location, item, createdAt: new Date().toLocaleTimeString() });
+    localStorage.setItem(STORAGE_BAGS_KEY, JSON.stringify(savedBags));
+
+    const list = document.getElementById("staff-bags-list");
+    if (list) {
+      list.innerHTML = "";
+      savedBags.slice(0, 5).forEach((b) => {
+        const row = document.createElement("div");
+        row.style.cssText = "padding:8px;margin-top:6px;border:1px solid rgba(52,211,153,.35);border-radius:8px;font-size:.75rem;color:#d1fae5;";
+        row.textContent = `${b.pnr} · ${b.item} (${b.airport} - ${b.location})`;
+        list.appendChild(row);
+      });
+    }
+  };
+</script>
 </body>
 </html>
