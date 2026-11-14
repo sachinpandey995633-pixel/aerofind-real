@@ -16,9 +16,9 @@ export default async function handler(req, res) {
     };
 
     if (mode === "reasoning") {
-      model = "gemini-2.5-pro";
+      model = "gemini-3.8-pro";
     } else if (mode === "fast") {
-      model = "gemini-2.5-flash-lite";
+      model = "gemini-3.8-flash-lite";
     } else if (mode === "search") {
       config.tools = [{ googleSearch: {} }];
     } else if (mode === "maps") {
